@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,9 +66,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.grindrplus.GrindrPlus
-import com.grindrplus.bridge.BridgeClient
-import com.grindrplus.bridge.NotificationActionReceiver
 import com.grindrplus.core.Config
 import com.grindrplus.core.Constants.GRINDR_PACKAGE_NAME
 import com.grindrplus.core.Logger
@@ -91,6 +89,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
 import timber.log.Timber.DebugTree
+import kotlin.system.exitProcess
 
 
 internal val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -133,7 +132,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private var showPermissionDialog by mutableStateOf(false)
-    private lateinit var receiver: NotificationActionReceiver
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -184,34 +182,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun registerNotificationReceiver() {
-        try {
-            receiver = NotificationActionReceiver()
-            val intentFilter = IntentFilter().apply {
-                addAction("com.grindrplus.COPY_ACTION")
-                addAction("com.grindrplus.VIEW_PROFILE_ACTION")
-                addAction("com.grindrplus.CUSTOM_ACTION")
-                addAction("com.grindrplus.DEFAULT_ACTION")
-            }
-            ContextCompat.registerReceiver(
-                applicationContext,
-                receiver,
-                intentFilter,
-                ContextCompat.RECEIVER_NOT_EXPORTED
-            )
-            Logger.i("Registered notification action receiver")
-        } catch (e: Exception) {
-            Logger.e("Failed to register receiver: ${e.message}")
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Timber.forest().isEmpty()) {
             Timber.plant(DebugTree())
         }
         FileOperationHandler.init(this)
-        registerNotificationReceiver()
 
         val isSystemInDarkTheme = resources.configuration.uiMode and
                 android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
@@ -240,69 +216,97 @@ class MainActivity : ComponentActivity() {
             var patchInfoDialog by remember { mutableStateOf(false) }
             var showUninstallDialogState by remember { showUninstallDialog }
             var calculatorScreen = remember { mutableStateOf(false) }
+            var showConnectionErrorDialog by remember { mutableStateOf(false) }
 
-            LaunchedEffect(Unit) {
-                GrindrPlus.bridgeClient = BridgeClient(this@MainActivity)
-                GrindrPlus.bridgeClient.connectAsync { connected ->
-                    Logger.initialize(this@MainActivity, GrindrPlus.bridgeClient, false)
-                    if (connected) {
-                        Config.initialize()
-                        HookManager().registerHooks(false)
-                        TaskManager().registerTasks(false)
-                        calculatorScreen.value = Config.get("discreet_icon", false) as Boolean
+            fun connectService() {
+                serviceBound = false
+                showConnectionErrorDialog = false
+
+                ManagerApp.bridgeClient.connectAsync { connected ->
+                    if (connected)
                         serviceBound = true
-
-                        if (!(Config.get("disable_permission_checks", false) as Boolean)) {
-                            checkNotificationPermission()
-                            checkUnknownSourcesPermission()
-                        }
-                    } else {
-                        Toast.makeText(this@MainActivity, "Failed to connect to GrindrPlus background service.", Toast.LENGTH_LONG).show()
-                    }
-
-                    if (Config.get("analytics", true) as Boolean) {
-                        val config = AndroidResourcePlausibleConfig(this@MainActivity).also {
-                            it.domain = "grindrplus.lol"
-                            it.host = "https://plausible.gmmz.dev/api/"
-                            it.enable = true
-                        }
-
-                        plausible = Plausible(
-                            config = config,
-                            client = NetworkFirstPlausibleClient(config)
-                        )
-
-                        fun getHooks() =
-                            Config.getCurrentPackageConfig().optJSONObject("hooks")?.let {
-                                val keyToEnabled = mutableMapOf<String, Any>();
-                                for (key in it.keys()) {
-                                    keyToEnabled.put(
-                                        key,
-                                        it.getJSONObject(key).optBoolean("enabled", false) as Any
-                                    )
-                                }
-                                keyToEnabled
-                            } ?: emptyMap<String, Any>().toMutableMap()
-
-                        plausible?.enable(true)
-                        plausible?.pageView(
-                            "app://grindrplus/home",
-                            props = getHooks().apply {
-                                put("android_version", Build.VERSION.SDK_INT)
-                            }
-                        )
-                    }
-
-                    if (Config.get("first_launch", true) as Boolean) {
-                        firstLaunchDialog = true
-                        patchInfoDialog = true
-                        plausible?.pageView("app://grindrplus/first_launch")
-                        Config.put("first_launch", false)
-                    }
+                    else
+                        showConnectionErrorDialog = true
                 }
             }
 
-            if (!serviceBound) {
+            LaunchedEffect(Unit) {
+                Logger.initialize(this@MainActivity, ManagerApp.bridgeClient, false)
+                connectService()
+            }
+
+            LaunchedEffect(serviceBound) {
+                if (!serviceBound)
+                    return@LaunchedEffect
+
+                Config.initialize()
+                HookManager().registerHooks(false)
+                TaskManager().registerTasks(false)
+                calculatorScreen.value = Config.get("discreet_icon", false) as Boolean
+
+                if (!(Config.get("disable_permission_checks", false) as Boolean)) {
+                    checkNotificationPermission()
+                    checkUnknownSourcesPermission()
+                }
+
+                if (Config.get("analytics", true) as Boolean) {
+                    val config = AndroidResourcePlausibleConfig(this@MainActivity).also {
+                        it.domain = "grindrplus.lol"
+                        it.host = "https://plausible.gmmz.dev/api/"
+                        it.enable = true
+                    }
+
+                    plausible = Plausible(
+                        config = config,
+                        client = NetworkFirstPlausibleClient(config)
+                    )
+
+                    fun getHooks() =
+                        Config.getCurrentPackageConfig().optJSONObject("hooks")?.let {
+                            val keyToEnabled = mutableMapOf<String, Any>();
+                            for (key in it.keys()) {
+                                keyToEnabled.put(
+                                    key,
+                                    it.getJSONObject(key).optBoolean("enabled", false) as Any
+                                )
+                            }
+                            keyToEnabled
+                        } ?: emptyMap<String, Any>().toMutableMap()
+
+                    plausible?.enable(true)
+                    plausible?.pageView(
+                        "app://grindrplus/home",
+                        props = getHooks().apply {
+                            put("android_version", Build.VERSION.SDK_INT)
+                        }
+                    )
+                }
+
+                if (Config.get("first_launch", true) as Boolean) {
+                    firstLaunchDialog = true
+                    patchInfoDialog = true
+                    plausible?.pageView("app://grindrplus/first_launch")
+                    Config.put("first_launch", false)
+                }
+            }
+
+            if (!serviceBound && !showConnectionErrorDialog) {
+                GrindrPlusTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                            Text(
+                                text = "Connecting to background service...",
+                                modifier = Modifier.padding(top = 16.dp),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
                 return@setContent
             }
 
@@ -311,6 +315,51 @@ class MainActivity : ComponentActivity() {
             ) {
                 if (calculatorScreen.value) {
                     CalculatorScreen(calculatorScreen)
+                    return@GrindrPlusTheme
+                }
+
+                if (showConnectionErrorDialog) {
+                    Dialog(onDismissRequest = {}) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                verticalArrangement = Center
+                            ) {
+                                Text(
+                                    text = "Connection Failed",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                                Text(
+                                    text = "Failed to connect to the background service. Try restarting the app",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { exitProcess(0) },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Close app")
+                                    }
+                                    Button(
+                                        onClick = { connectService() },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Retry")
+                                    }
+                                }
+                            }
+                        }
+                    }
                     return@GrindrPlusTheme
                 }
 
@@ -622,23 +671,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         activityScope.cancel()
-        try {
-            if (::receiver.isInitialized) {
-                applicationContext.unregisterReceiver(receiver)
-                Logger.i("Unregistered notification action receiver")
-            }
-        } catch (e: Exception) {
-            Logger.e("Error unregistering receiver: ${e.message}")
-        }
-
-        try {
-            if (GrindrPlus.bridgeClient.isConnected()) {
-                GrindrPlus.bridgeClient.unbind()
-            }
-        } catch (e: Exception) {
-            Logger.e("Error unbinding bridge client: ${e.message}")
-        }
-
         super.onDestroy()
     }
 }
