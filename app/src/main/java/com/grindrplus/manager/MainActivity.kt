@@ -207,7 +207,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Timber.plant(DebugTree())
+        if (Timber.forest().isEmpty()) {
+            Timber.plant(DebugTree())
+        }
         FileOperationHandler.init(this)
         registerNotificationReceiver()
 
