@@ -373,15 +373,15 @@ class BridgeClient(private val context: Context) {
                 Logger.d("Connected to service on-demand for getConfig", LogSource.BRIDGE)
             } else {
                 Logger.w("Cannot get config, service not bound", LogSource.BRIDGE)
-                return JSONObject()
+                throw IllegalStateException("Service not bound")
             }
         }
 
         return try {
-            bridgeService?.config?.let { JSONObject(it) } ?: JSONObject()
+            bridgeService?.config?.let { JSONObject(it) } ?: throw IllegalStateException("Service returned null config")
         } catch (e: Exception) {
             Logger.e("Error getting config: ${e.message}", LogSource.BRIDGE)
-            JSONObject()
+            throw e
         }
     }
 

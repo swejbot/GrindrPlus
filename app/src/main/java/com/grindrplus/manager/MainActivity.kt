@@ -245,15 +245,19 @@ class MainActivity : ComponentActivity() {
                 GrindrPlus.bridgeClient = BridgeClient(this@MainActivity)
                 GrindrPlus.bridgeClient.connectAsync { connected ->
                     Logger.initialize(this@MainActivity, GrindrPlus.bridgeClient, false)
-                    Config.initialize()
-                    HookManager().registerHooks(false)
-                    TaskManager().registerTasks(false)
-                    calculatorScreen.value = Config.get("discreet_icon", false) as Boolean
-                    serviceBound = true
+                    if (connected) {
+                        Config.initialize()
+                        HookManager().registerHooks(false)
+                        TaskManager().registerTasks(false)
+                        calculatorScreen.value = Config.get("discreet_icon", false) as Boolean
+                        serviceBound = true
 
-                    if (!(Config.get("disable_permission_checks", false) as Boolean)) {
-                        checkNotificationPermission()
-                        checkUnknownSourcesPermission()
+                        if (!(Config.get("disable_permission_checks", false) as Boolean)) {
+                            checkNotificationPermission()
+                            checkUnknownSourcesPermission()
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, "Failed to connect to GrindrPlus background service.", Toast.LENGTH_LONG).show()
                     }
 
                     if (Config.get("analytics", true) as Boolean) {
