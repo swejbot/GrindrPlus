@@ -630,6 +630,15 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Logger.e("Error unregistering receiver: ${e.message}")
         }
+
+        try {
+            if (GrindrPlus.bridgeClient.isConnected()) {
+                GrindrPlus.bridgeClient.unbind()
+            }
+        } catch (e: Exception) {
+            Logger.e("Error unbinding bridge client: ${e.message}")
+        }
+
         super.onDestroy()
     }
 }
