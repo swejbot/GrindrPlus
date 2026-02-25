@@ -21,9 +21,11 @@ import com.grindrplus.utils.Hook
 import com.grindrplus.utils.HookStage
 import com.grindrplus.utils.RetrofitUtils
 import com.grindrplus.utils.RetrofitUtils.getFailValue
+import com.grindrplus.utils.RetrofitUtils.getMethodAndValue
 import com.grindrplus.utils.RetrofitUtils.isFail
 import com.grindrplus.utils.hook
 import com.grindrplus.utils.hookConstructor
+import com.grindrplus.utils.withSuspendResult
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.XposedHelpers.getObjectField
 import org.json.JSONObject
@@ -46,19 +48,26 @@ class BanManagement : Hook(
         RetrofitUtils.hookService(
             authService,
         ) { originalHandler, originalProxy, method, args ->
+            val result = originalHandler.invoke(originalProxy, method, args)
+
             val isLogin = args.size > 1
                     && args[1] != null
                     && args[1]?.javaClass?.name?.contains("LoginEmailRequest") == true
 
             if (isLogin) {
-               logi("BanManagement: Intercepting login attempt: ${method.name}")
-               return@hookService RetrofitUtils.invokeAndReplaceResult(originalHandler, originalProxy, method, args) { result ->
-                    handleLoginResult(result)
-                    result
+                withSuspendResult(args, result) { args, result ->
+                    try {
+                        logi("BanManagement: Intercepting login attempt: ${method.name}")
+                        handleLoginResult(result)
+                    } catch (_: Throwable) {
+                        // Ignore exceptions here
+                    }
+
+                    return@withSuspendResult result
                 }
             }
 
-            return@hookService originalHandler.invoke(originalProxy, method, args)
+            result
         }
 
         // search for 'Settings.Secure.getString(context.getContentResolver(), "android_id");' in deviceUtility class
