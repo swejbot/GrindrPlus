@@ -42,6 +42,7 @@ import com.grindrplus.core.Config
 import com.grindrplus.core.Constants.GRINDR_PACKAGE_NAME
 import com.grindrplus.core.Logger
 import com.grindrplus.manager.DATA_URL
+import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.MainActivity
 import com.grindrplus.manager.TAG
 import com.grindrplus.manager.activityScope
@@ -88,7 +89,7 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
     var customModUri by remember { mutableStateOf<Uri?>(null) }
 
     // 3. Side Effects
-    val manifestUrl = (Config.get("custom_manifest", DATA_URL) as String).ifBlank { null }
+    val manifestUrl = (GPApp.config.get("custom_manifest", DATA_URL) as String).ifBlank { null }
 
     LaunchedEffect(Unit) {
         viewModel.loadVersionData(manifestUrl.toString())
@@ -105,7 +106,7 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
     LaunchedEffect(selectedVersion) {
         if (selectedVersion == null) return@LaunchedEffect
 
-        val mapsApiKey = (Config.get("maps_api_key", "") as String).ifBlank { null }
+        val mapsApiKey = (GPApp.config.get("maps_api_key", "") as String).ifBlank { null }
 
         installation = Installation(
             context,
@@ -137,7 +138,7 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
                 val bundleFile = createTempFileFromUri(context, customBundleUri!!, "grindr-$customVersionName.zip")
                 val modFile = createTempFileFromUri(context, customModUri!!, "mod-$customVersionName.zip")
 
-                val mapsApiKey = (Config.get("maps_api_key", "") as String).ifBlank { null }
+                val mapsApiKey = (GPApp.config.get("maps_api_key", "") as String).ifBlank { null }
 
                 val customInstallation = Installation(
                     context,
@@ -484,7 +485,7 @@ private fun startInstallation(
 
     activityScope.launch {
         try {
-            val mapsApiKey = (Config.get("maps_api_key", "") as String).ifBlank { null }
+            val mapsApiKey = (GPApp.config.get("maps_api_key", "") as String).ifBlank { null }
 
             val installation = Installation(
                 context,

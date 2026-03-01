@@ -124,14 +124,14 @@ class FeatureGranting : Hook(
         featureManager.add(Feature("RunningOnEmulatorFeatureFlag", false))
         featureManager.add(Feature("BannerNewFlow", false))
         featureManager.add(Feature("CalendarUi", true))
-        featureManager.add(Feature("CookieTap", Config.get("enable_cookie_tap", false, true) as Boolean))
-        featureManager.add(Feature("VipFlag", Config.get("enable_vip_flag", false, true) as Boolean))
+        featureManager.add(Feature("CookieTap", GrindrPlus.config.get("enable_cookie_tap", false, true) as Boolean))
+        featureManager.add(Feature("VipFlag", GrindrPlus.config.get("enable_vip_flag", false, true) as Boolean))
         featureManager.add(Feature("PositionFilter", true))
         featureManager.add(Feature("AgeFilter", true))
         featureManager.add(Feature("BanterFeatureGate", false))
         featureManager.add(Feature("TakenOnGrindrWatermarkFlag", false))
         featureManager.add(Feature("gender-filter", true))
         featureManager.add(Feature("enable-chat-summaries", true))
-        featureManager.add(Feature("enable-mutual-taps-no-paywall", !(Config.get("enable_interest_section", true, true) as Boolean)))
+        featureManager.add(Feature("enable-mutual-taps-no-paywall", !(GrindrPlus.config.get("enable_interest_section", true, true) as Boolean)))
     }
 }

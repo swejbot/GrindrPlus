@@ -34,8 +34,8 @@ object Utils {
     }
 
     fun formatEpochSeconds(epochSec: Long): String {
-        val formatter = DateTimeFormatter.ofPattern(Config.get(
-            "date_format", "yyyy-MM-dd") as String)
+        val formatter = DateTimeFormatter.ofPattern(GrindrPlus.config.get(
+            "date_format", "yyyy-MM-dd") as String) // TODO just use locale date formatter
         return try {
             val instant = Instant.ofEpochSecond(epochSec)
             val dt = LocalDateTime.ofInstant(instant, ZoneOffset.UTC)

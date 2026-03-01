@@ -33,7 +33,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
-class HookManager {
+class HookManager(
+    private val config: Config
+) {
     private var hooks = mutableMapOf<KClass<out Hook>, Hook>()
 
     fun registerHooks(init: Boolean = true) {
@@ -69,7 +71,7 @@ class HookManager {
             )
 
             hookList.forEach { hook ->
-                Config.initHookSettings(
+                config.initHookSettings(
                     hook.hookName, hook.hookDesc, false
                 )
             }
@@ -79,7 +81,7 @@ class HookManager {
             hooks = hookList.associateBy { it::class }.toMutableMap()
 
             hooks.values.forEach { hook ->
-                if (Config.isHookEnabled(hook.hookName)) {
+                if (config.isHookEnabled(hook.hookName)) {
                     hook.init()
                     Logger.s("Initialized hook: ${hook.hookName}")
                 } else {

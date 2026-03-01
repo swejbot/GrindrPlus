@@ -5,6 +5,7 @@ import com.grindrplus.core.Config
 import com.grindrplus.core.Utils.openProfile
 import com.grindrplus.core.Logger
 import com.grindrplus.core.loge
+import com.grindrplus.manager.GPApp
 import com.grindrplus.utils.Hook
 import com.grindrplus.utils.HookStage
 import com.grindrplus.utils.hook
@@ -107,7 +108,7 @@ class UnlimitedProfiles : Hook(
         }
 
         findClass(onProfileClicked).hook("invokeSuspend", HookStage.BEFORE) { param ->
-            if (Config.get("disable_profile_swipe", false) as Boolean) {
+            if (GPApp.config.get("disable_profile_swipe", false) as Boolean) {
                 getObjectField(param.thisObject(), param.thisObject().javaClass.declaredFields
                     .firstOrNull { it.type.name.contains("ServerDrivenCascadeCachedProfile") }?.name
                 )?.let { cachedProfile ->

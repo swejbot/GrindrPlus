@@ -1,5 +1,6 @@
 package com.grindrplus.hooks
 
+import com.grindrplus.GrindrPlus
 import com.grindrplus.core.Config
 import com.grindrplus.utils.Hook
 import com.grindrplus.utils.HookStage
@@ -14,7 +15,7 @@ class OnlineIndicator : Hook(
     val isFeatureFlagEnabled = "q30.f" // search for 'implements IsFeatureFlagEnabled'
 
     override fun init() {
-        val savedDurationMinutes = Config.get("online_indicator", 3).toString().toInt()
+        val savedDurationMinutes = GrindrPlus.config.get("online_indicator", 3).toString().toInt()
         val savedDurationMillis = savedDurationMinutes.minutes.inWholeMilliseconds
 
         findClass(utils)// shouldShowOnlineIndicator()

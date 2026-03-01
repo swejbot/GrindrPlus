@@ -1,9 +1,6 @@
 package com.grindrplus.core
 
 import android.annotation.SuppressLint
-import android.content.Context
-import com.grindrplus.BuildConfig
-import com.grindrplus.bridge.BridgeClient
 import com.grindrplus.utils.Hook
 import com.grindrplus.utils.Task
 import timber.log.Timber
@@ -15,21 +12,33 @@ import java.util.concurrent.ConcurrentHashMap
 enum class LogLevel { DEBUG, INFO, WARNING, ERROR, SUCCESS }
 enum class LogSource { MODULE, MANAGER, HOOK, TASK, BRIDGE, UNKNOWN, HTTP }
 
+/**
+ * logger for xposed module (and hoooks)
+ * outputs to logcat and forwards to bridge service
+ */
 @SuppressLint("StaticFieldLeak", "ConstantLocale")
 object Logger {
     private const val TAG = "GrindrPlus"
     private var isModuleContext = false
-    private var bridgeClient: BridgeClient? = null
+    private var _onMessage: (message: String) -> Unit = {}
     private val hookPrefixes = ConcurrentHashMap<String, String>()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
-    fun initialize(context: Context, bridge: BridgeClient, isModule: Boolean) {
-        bridgeClient = bridge
-        isModuleContext = isModule
+    var debugEnabled: Boolean = true
 
+    init {
         if (Timber.forest().isEmpty()) {
             Timber.plant(Timber.DebugTree())
         }
+    }
+
+    fun initialize(isModule: Boolean, onMessage: (message: String) -> Unit = {}) {
+        isModuleContext = isModule
+        this._onMessage = onMessage
+    }
+
+    fun onMessage(onMessage: (message: String) -> Unit = {}) {
+        this._onMessage = onMessage
     }
 
     fun registerHookPrefix(subName: String, prefix: String = subName) {
@@ -88,13 +97,7 @@ object Logger {
             LogLevel.SUCCESS -> Timber.tag(TAG).i(logcatMessage)
         }
 
-        bridgeClient?.let { bridge ->
-            try {
-                bridge.getService()?.writeRawLog(conciseMessage)
-            } catch (e: Exception) {
-                Timber.tag(TAG).e("Failed to send log to bridge service: ${e.message}")
-            }
-        }
+        _onMessage(conciseMessage)
     }
 
     private fun buildLogcatMessage(source: LogSource, subName: String?, message: String, isSuccess: Boolean): String {
@@ -109,34 +112,12 @@ object Logger {
     }
 
     fun writeRaw(content: String) {
-        bridgeClient?.let { bridge ->
-            try {
-                bridge.getService()?.writeRawLog(content)
-            } catch (e: Exception) {
-                Timber.tag(TAG).e("Failed to write raw log to bridge service: ${e.message}")
-            }
-        }
-    }
-
-    fun clearLogs() {
-        bridgeClient?.let { bridge ->
-            try {
-                bridge.getService()?.clearLogs()
-            } catch (e: Exception) {
-                Timber.tag(TAG).e("Failed to clear logs in bridge service: ${e.message}")
-            }
-        }
+        _onMessage(content)
     }
 
     private fun getDefaultSource(): LogSource =
         if (isModuleContext) LogSource.MODULE else LogSource.MANAGER
 
-    private val debugEnabled: Boolean
-        get() = when (val value = Config.get("debug_mode", false)) {
-            is Boolean -> value // We account for both strings and booleans
-            is String -> value.equals("true", ignoreCase = true)
-            else -> false
-        } || BuildConfig.DEBUG // Always true in debug builds
 }
 
 fun Hook.logd(message: String) = Logger.d(message, LogSource.HOOK, this.hookName)

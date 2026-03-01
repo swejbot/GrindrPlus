@@ -29,7 +29,6 @@ import com.grindrplus.utils.PCHIP
 import com.grindrplus.utils.HookStage
 import com.grindrplus.utils.hookConstructor
 import dalvik.system.DexClassLoader
-import de.robv.android.xposed.XposedHelpers.getObjectField
 import de.robv.android.xposed.XposedHelpers.callMethod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +59,8 @@ object GrindrPlus {
         private set
     lateinit var bridgeClient: BridgeClient
         internal set
+    lateinit var config: Config
+        internal set
     lateinit var instanceManager: InstanceManager
         private set
     lateinit var httpClient: Client
@@ -68,6 +69,7 @@ object GrindrPlus {
         private set
 
     lateinit var hookManager: HookManager
+    lateinit var taskManager: TaskManager
 
     var shouldTriggerAntiblock = true
     var blockCaller: String = ""
@@ -109,8 +111,7 @@ object GrindrPlus {
 
     internal val userAgent = "as.r" // search for 'grindr3/'
     internal val userSession = "com.grindrapp.android.usersession.b" // search for 'com.grindrapp.android.storage.UserSessionImpl$1'
-    private val deviceInfo =
-        "ek.y" // search for 'AdvertisingIdClient.Info("00000000-0000-0000-0000-000000000000", true)'
+    private val deviceInfo = "ek.y" // search for 'AdvertisingIdClient.Info("00000000-0000-0000-0000-000000000000", true)'
     internal val grindrLocationProvider = "nz.e" // search for 'system settings insufficient for location request, attempting to resolve'
     internal val serverDrivenCascadeRepo = "com.grindrapp.android.persistence.repository.ServerDrivenCascadeRepo"
     internal val ageVerificationActivity = "com.grindrapp.android.ageverification.presentation.ui.AgeVerificationActivity"
@@ -119,7 +120,6 @@ object GrindrPlus {
 
     private val ioScope = CoroutineScope(Dispatchers.IO)
     private val taskScheduer = TaskScheduler(ioScope)
-    internal val taskManager = TaskManager(taskScheduer)
     private var currentActivityRef: WeakReference<Activity>? = null
 
     private val splineDataEndpoint =
@@ -135,32 +135,16 @@ object GrindrPlus {
             return
         }
 
-        setupCrashLogging()
-
         this.context = application
-        this.bridgeClient = BridgeClient(context)
-
-        Logger.initialize(context, bridgeClient, true)
+        this.packageName = context.packageName
+        Logger.initialize(true)
         Logger.i("Initializing GrindrPlus...", LogSource.MODULE)
 
+        setupCrashLogging()
         checkVersionCodes(versionCodes, versionNames)
-        val connected = runBlocking {
-            try {
-                withTimeout(10000) {
-                    bridgeClient.connectWithRetry(5, 1000)
-                }
-            } catch (e: Exception) {
-                Logger.e("Connection timeout: ${e.message}", LogSource.MODULE)
-                false
-            }
-        }
+        configureManagerServices(packageName)
 
-        if (!connected) {
-            Logger.e("Failed to connect to the bridge service", LogSource.MODULE)
-            shouldShowBridgeConnectionError = true
-        }
 
-        Config.initialize(application.packageName)
         val newModule = File(context.filesDir, "grindrplus.dex")
         File(modulePath).copyTo(newModule, true)
         newModule.setReadOnly()
@@ -168,15 +152,15 @@ object GrindrPlus {
         this.classLoader =
             DexClassLoader(newModule.absolutePath, null, null, context.classLoader)
         this.database = GPDatabase.create(context)
-        this.hookManager = HookManager()
+        this.hookManager = HookManager(config)
+        this.taskManager = TaskManager(config,taskScheduer)
         this.instanceManager = InstanceManager(classLoader)
-        this.packageName = context.packageName
 
         if (bridgeClient.shouldRegenAndroidId(packageName)) {
             Logger.i("Generating new Android device ID", LogSource.MODULE)
             val androidId = java.util.UUID.randomUUID()
                 .toString().replace("-", "").lowercase().take(16)
-            Config.put("android_device_id", androidId)
+            config.put("android_device_id", androidId)
         }
 
         val forcedCoordinates = bridgeClient.getForcedLocation(packageName)
@@ -190,12 +174,12 @@ object GrindrPlus {
                     Logger.w("Ignoring forced coordinates: $forcedCoordinates", LogSource.MODULE)
                 } else {
                     Logger.i("Using forced coordinates: $forcedCoordinates", LogSource.MODULE)
-                    Config.put("forced_coordinates", forcedCoordinates)
+                    config.put("forced_coordinates", forcedCoordinates)
                 }
             }
-        } else if (Config.get("forced_coordinates", "") != "") {
+        } else if (config.get("forced_coordinates", "") != "") {
             Logger.i("Clearing previously set forced coordinates", LogSource.MODULE)
-            Config.put("forced_coordinates", "")
+            config.put("forced_coordinates", "")
         }
 
         registerActivityLifecycleCallbacks(application)
@@ -234,6 +218,53 @@ object GrindrPlus {
         }
     }
 
+    private fun configureManagerServices(packageName: String) {
+        this.bridgeClient = BridgeClient(context)
+
+        val connected = runBlocking {
+            try {
+                withTimeout(10000) {
+                    bridgeClient.connectWithRetry(5, 1000)
+                }
+            } catch (e: Exception) {
+                Logger.e("Connection timeout: ${e.message}", LogSource.MODULE)
+                false
+            }
+        }
+
+        if (!connected) {
+            Logger.e("Failed to connect to the bridge service", LogSource.MODULE)
+            shouldShowBridgeConnectionError = true
+
+            config = Config(
+                currentPackageName = packageName,
+                getConfig = { "{}" }, // empty json object
+                onChange = { },
+            )
+        } else {
+            Logger.onMessage { message ->
+                try {
+                    bridgeClient.getService()?.writeRawLog(message)
+                } catch (e: Exception) {
+                    Timber.tag("GrindrPlus").e("Failed to send log to bridge service: ${e.message}")
+                }
+            }
+
+            config = Config(
+                currentPackageName = packageName,
+                getConfig = { bridgeClient.getConfig() },
+                onChange = { bridgeClient.setConfig(it) },
+            )
+        }
+
+
+        Logger.debugEnabled = when (val value = config.get("debug_mode", false)) {
+            is Boolean -> value // We account for both strings and booleans
+            is String -> value.equals("true", ignoreCase = true)
+            else -> false
+        } || BuildConfig.DEBUG
+    }
+
     private fun setupServerNotificationHook() {
         try {
             classLoader.loadClass(serverNotification).hookConstructor(HookStage.AFTER) { param ->
@@ -264,7 +295,7 @@ object GrindrPlus {
                         showAgeVerificationComplianceDialog(activity)
                     }
                     activity.javaClass.name == browseExploreActivity -> {
-                        if ((Config.get("maps_api_key", "") as String).isEmpty()) {
+                        if ((config.get("maps_api_key", "") as String).isEmpty()) {
                             if (!bridgeClient.isLSPosed()) {
                                 showMapsApiKeyDialog(activity)
                             }
@@ -345,10 +376,10 @@ object GrindrPlus {
 
         Logger.i("Initializing GrindrPlus core...", LogSource.MODULE)
 
-        if ((Config.get("reset_database", false) as Boolean)) {
+        if ((config.get("reset_database", false) as Boolean)) {
             Logger.i("Resetting database...", LogSource.MODULE)
             database.clearAllTables()
-            Config.put("reset_database", false)
+            config.put("reset_database", false)
         }
 
         hookManager.init()

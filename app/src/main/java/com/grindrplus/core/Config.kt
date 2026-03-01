@@ -6,27 +6,27 @@ import com.grindrplus.manager.utils.AppCloneUtils
 import org.json.JSONObject
 import java.io.IOException
 
-object Config {
+class Config(
+    val getConfig: () -> String,
+    var currentPackageName: String = Constants.GRINDR_PACKAGE_NAME,
+    val onChange: (value: String) -> Unit = {}
+) {
     private var localConfig = JSONObject()
-    private var currentPackageName = Constants.GRINDR_PACKAGE_NAME
     private val GLOBAL_SETTINGS = listOf("first_launch", "analytics", "discreet_icon", "material_you", "debug_mode", "disable_permission_checks", "custom_manifest", "maps_api_key", "last_push_id")
 
-    fun initialize(packageName: String? = null) {
-        if (packageName != null) {
-            Logger.d("Initializing config for package: $packageName", LogSource.MANAGER)
-        }
 
-        localConfig = readRemoteConfig()
-
-        if (packageName != null) {
-            currentPackageName = packageName
-        }
+    init {
+        localConfig = JSONObject(getConfig())
 
         migrateToMultiCloneFormat()
     }
 
     private fun isGlobalSetting(name: String): Boolean {
         return name in GLOBAL_SETTINGS
+    }
+
+    private fun configUpdated() {
+        onChange(localConfig.toString(4))
     }
 
     private fun migrateToMultiCloneFormat() {
@@ -54,20 +54,10 @@ object Config {
             }
 
             localConfig.put("clones", cloneSettings)
-            writeRemoteConfig(localConfig)
+            configUpdated()
         }
 
         ensurePackageExists(currentPackageName)
-    }
-
-    fun setCurrentPackage(packageName: String) {
-        Logger.d("Setting current package to $packageName", LogSource.MANAGER)
-        currentPackageName = packageName
-        ensurePackageExists(packageName)
-    }
-
-    fun getCurrentPackage(): String {
-        return currentPackageName
     }
 
     private fun ensurePackageExists(packageName: String) {
@@ -78,7 +68,7 @@ object Config {
 
         if (!clones.has(packageName)) {
             clones.put(packageName, JSONObject().put("hooks", JSONObject()))
-            writeRemoteConfig(localConfig)
+            configUpdated()
         }
     }
 
@@ -89,28 +79,6 @@ object Config {
 
         return installedClones.filter { pkg ->
             clones.has(pkg)
-        }
-    }
-
-    fun readRemoteConfig(): JSONObject {
-        return try {
-            GrindrPlus.bridgeClient.getConfig()
-        } catch (e: Exception) {
-            Logger.e("Failed to read config file: ${e.message}", LogSource.MANAGER)
-            Logger.writeRaw(e.stackTraceToString())
-            JSONObject().put("clones", JSONObject().put(
-                Constants.GRINDR_PACKAGE_NAME,
-                JSONObject().put("hooks", JSONObject()))
-            )
-        }
-    }
-
-    fun writeRemoteConfig(json: JSONObject) {
-        try {
-            GrindrPlus.bridgeClient.setConfig(json)
-        } catch (e: IOException) {
-            Logger.e("Failed to write config file: ${e.message}", LogSource.MANAGER)
-            Logger.writeRaw(e.stackTraceToString())
         }
     }
 
@@ -131,7 +99,7 @@ object Config {
             packageConfig.put(name, value)
         }
 
-        writeRemoteConfig(localConfig)
+        configUpdated()
     }
 
     fun get(name: String, default: Any, autoPut: Boolean = false): Any {
@@ -174,7 +142,7 @@ object Config {
             ?: JSONObject().also { packageConfig.put("hooks", it) }
 
         hooks.optJSONObject(hookName)?.put("enabled", enabled)
-        writeRemoteConfig(localConfig)
+        configUpdated()
     }
 
     fun isHookEnabled(hookName: String): Boolean {
@@ -191,7 +159,7 @@ object Config {
             ?: JSONObject().also { packageConfig.put("tasks", it) }
 
         tasks.optJSONObject(taskId)?.put("enabled", enabled)
-        writeRemoteConfig(localConfig)
+        configUpdated()
     }
 
     fun isTaskEnabled(taskId: String): Boolean {
@@ -229,7 +197,7 @@ object Config {
                 put("enabled", state)
             })
 
-            writeRemoteConfig(localConfig)
+            configUpdated()
         }
     }
 
@@ -245,7 +213,7 @@ object Config {
                 put("enabled", state)
             })
 
-            writeRemoteConfig(localConfig)
+            configUpdated()
         }
     }
 
@@ -263,5 +231,15 @@ object Config {
         }
 
         return map
+    }
+
+    fun import(content: String) {
+        localConfig = JSONObject(content)
+        ensurePackageExists(currentPackageName)
+        configUpdated()
+    }
+
+    fun export(): String {
+        return localConfig.toString(4)
     }
 }

@@ -26,6 +26,7 @@ import coil3.compose.AsyncImage
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import com.grindrplus.core.Config
+import com.grindrplus.manager.GPApp
 
 @Composable
 fun CalculatorScreen(calculatorScreen: MutableState<Boolean>) {
@@ -46,7 +47,7 @@ fun CalculatorScreen(calculatorScreen: MutableState<Boolean>) {
     )
 
     LaunchedEffect(Unit) {
-        showPasswordDialog = Config.get("calculator_first_launch", true) as Boolean
+        showPasswordDialog = GPApp.config.get("calculator_first_launch", true) as Boolean
     }
 
     Surface(
@@ -62,7 +63,7 @@ fun CalculatorScreen(calculatorScreen: MutableState<Boolean>) {
 
         if (showPasswordDialog) {
             CalculatorPasswordDialog {
-                Config.put("calculator_first_launch", false)
+                GPApp.config.put("calculator_first_launch", false)
                 showPasswordDialog = false
             }
         }

@@ -3,7 +3,6 @@ package com.grindrplus.manager
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
@@ -211,45 +210,22 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            var serviceBound by remember { mutableStateOf(false) }
             var firstLaunchDialog by remember { mutableStateOf(false) }
             var patchInfoDialog by remember { mutableStateOf(false) }
             var showUninstallDialogState by remember { showUninstallDialog }
             var calculatorScreen = remember { mutableStateOf(false) }
-            var showConnectionErrorDialog by remember { mutableStateOf(false) }
-
-            fun connectService() {
-                serviceBound = false
-                showConnectionErrorDialog = false
-
-                ManagerApp.bridgeClient.connectAsync { connected ->
-                    if (connected)
-                        serviceBound = true
-                    else
-                        showConnectionErrorDialog = true
-                }
-            }
 
             LaunchedEffect(Unit) {
-                Logger.initialize(this@MainActivity, ManagerApp.bridgeClient, false)
-                connectService()
-            }
+                HookManager(GPApp.config).registerHooks(false)
+                TaskManager(GPApp.config).registerTasks(false)
+                calculatorScreen.value = GPApp.config.get("discreet_icon", false) as Boolean
 
-            LaunchedEffect(serviceBound) {
-                if (!serviceBound)
-                    return@LaunchedEffect
-
-                Config.initialize()
-                HookManager().registerHooks(false)
-                TaskManager().registerTasks(false)
-                calculatorScreen.value = Config.get("discreet_icon", false) as Boolean
-
-                if (!(Config.get("disable_permission_checks", false) as Boolean)) {
+                if (!(GPApp.config.get("disable_permission_checks", false) as Boolean)) {
                     checkNotificationPermission()
                     checkUnknownSourcesPermission()
                 }
 
-                if (Config.get("analytics", true) as Boolean) {
+                if (GPApp.config.get("analytics", true) as Boolean) {
                     val config = AndroidResourcePlausibleConfig(this@MainActivity).also {
                         it.domain = "grindrplus.lol"
                         it.host = "https://plausible.gmmz.dev/api/"
@@ -262,13 +238,11 @@ class MainActivity : ComponentActivity() {
                     )
 
                     fun getHooks() =
-                        Config.getCurrentPackageConfig().optJSONObject("hooks")?.let {
+                        GPApp.config.getCurrentPackageConfig().optJSONObject("hooks")?.let {
                             val keyToEnabled = mutableMapOf<String, Any>();
                             for (key in it.keys()) {
-                                keyToEnabled.put(
-                                    key,
+                                keyToEnabled[key] =
                                     it.getJSONObject(key).optBoolean("enabled", false) as Any
-                                )
                             }
                             keyToEnabled
                         } ?: emptyMap<String, Any>().toMutableMap()
@@ -282,84 +256,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                if (Config.get("first_launch", true) as Boolean) {
+                if (GPApp.config.get("first_launch", true) as Boolean) {
                     firstLaunchDialog = true
                     patchInfoDialog = true
                     plausible?.pageView("app://grindrplus/first_launch")
-                    Config.put("first_launch", false)
+                    GPApp.config.put("first_launch", false)
                 }
-            }
-
-            if (!serviceBound && !showConnectionErrorDialog) {
-                GrindrPlusTheme {
-                    Surface(modifier = Modifier.fillMaxSize()) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            androidx.compose.material3.CircularProgressIndicator()
-                            Text(
-                                text = "Connecting to background service...",
-                                modifier = Modifier.padding(top = 16.dp),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-                return@setContent
             }
 
             GrindrPlusTheme(
-                dynamicColor = Config.get("material_you", false) as Boolean,
+                dynamicColor = GPApp.config.get("material_you", false) as Boolean,
             ) {
                 if (calculatorScreen.value) {
                     CalculatorScreen(calculatorScreen)
-                    return@GrindrPlusTheme
-                }
-
-                if (showConnectionErrorDialog) {
-                    Dialog(onDismissRequest = {}) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            shape = RoundedCornerShape(16.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                verticalArrangement = Center
-                            ) {
-                                Text(
-                                    text = "Connection Failed",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-                                Text(
-                                    text = "Failed to connect to the background service. Try restarting the app",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedButton(
-                                        onClick = { exitProcess(0) },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("Close app")
-                                    }
-                                    Button(
-                                        onClick = { connectService() },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("Retry")
-                                    }
-                                }
-                            }
-                        }
-                    }
                     return@GrindrPlusTheme
                 }
 

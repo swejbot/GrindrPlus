@@ -6,6 +6,7 @@ import com.grindrplus.bridge.BridgeService
 import com.grindrplus.core.Config
 import com.grindrplus.core.DatabaseHelper
 import com.grindrplus.core.Logger
+import com.grindrplus.core.NotificationSender
 import com.grindrplus.core.logd
 import com.grindrplus.core.loge
 import com.grindrplus.utils.Hook
@@ -43,7 +44,7 @@ class AntiBlock : Hook(
                 GrindrPlus.shouldTriggerAntiblock = true
             }
 
-        if (Config.get("force_old_anti_block_behavior", false) as Boolean) {
+        if (GrindrPlus.config.get("force_old_anti_block_behavior", false) as Boolean) {
             findClass("com.grindrapp.android.chat.model.ConversationDeleteNotification")
                 .hookConstructor(HookStage.BEFORE) { param ->
                     @Suppress("UNCHECKED_CAST")
@@ -184,7 +185,7 @@ class AntiBlock : Hook(
                 { profileId.toString() } else { "$displayName ($profileId)" }
                 GrindrPlus.bridgeClient.logBlockEvent(profileId.toString(), displayName, true,
                     GrindrPlus.packageName)
-                if (Config.get("anti_block_use_toasts", false) as Boolean) {
+                if (GrindrPlus.config.get("anti_block_use_toasts", false) as Boolean) {
                     GrindrPlus.showToast(Toast.LENGTH_LONG, "Blocked by $displayName")
                 } else {
                     GrindrPlus.bridgeClient.sendNotificationWithMultipleActions(
@@ -194,7 +195,7 @@ class AntiBlock : Hook(
                         listOf("Copy ID"),
                         listOf("COPY"),
                         listOf(profileId.toString(), profileId.toString()),
-                        BridgeService.CHANNEL_BLOCKS,
+                        NotificationSender.CHANNEL_BLOCKS,
                         "Block Notifications",
                         "Notifications when users block you"
                     )
@@ -207,7 +208,7 @@ class AntiBlock : Hook(
                 displayName = if (displayName != profileId.toString()) "$displayName ($profileId)" else displayName
                 GrindrPlus.bridgeClient.logBlockEvent(profileId.toString(), displayName, false,
                     GrindrPlus.packageName)
-                if (Config.get("anti_block_use_toasts", false) as Boolean) {
+                if (GrindrPlus.config.get("anti_block_use_toasts", false) as Boolean) {
                     GrindrPlus.showToast(Toast.LENGTH_LONG, "Unblocked by $displayName")
                 } else {
                     GrindrPlus.bridgeClient.sendNotificationWithMultipleActions(
@@ -217,7 +218,7 @@ class AntiBlock : Hook(
                         listOf("Copy ID"),
                         listOf("COPY"),
                         listOf(profileId.toString()),
-                        BridgeService.CHANNEL_UNBLOCKS,
+                        NotificationSender.CHANNEL_UNBLOCKS,
                         "Unblock Notifications",
                         "Notifications when users unblock you"
                     )

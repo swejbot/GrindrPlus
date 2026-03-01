@@ -22,7 +22,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
-import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -43,10 +42,6 @@ class BridgeClient(private val context: Context) {
         const val CONNECTION_TIMEOUT_MS = 5000L
         private const val WATCHDOG_CHECK_INTERVAL_MS = 30000L
         private const val RECONNECT_DELAY_MS = 2000L
-    }
-
-    init {
-        Logger.initialize(context, this, false)
     }
 
     private val connection = object : ServiceConnection {
@@ -367,7 +362,7 @@ class BridgeClient(private val context: Context) {
         }
     }
 
-    fun getConfig(): JSONObject {
+    fun getConfig(): String {
         if (!isBound.get()) {
             if (connectBlocking(3000)) {
                 Logger.d("Connected to service on-demand for getConfig", LogSource.BRIDGE)
@@ -378,14 +373,14 @@ class BridgeClient(private val context: Context) {
         }
 
         return try {
-            bridgeService?.config?.let { JSONObject(it) } ?: throw IllegalStateException("Service returned null config")
+            bridgeService?.config ?: throw IllegalStateException("Service returned null config")
         } catch (e: Exception) {
             Logger.e("Error getting config: ${e.message}", LogSource.BRIDGE)
             throw e
         }
     }
 
-    fun setConfig(config: JSONObject) {
+    fun setConfig(config: String) {
         if (!isBound.get()) {
             if (connectBlocking(3000)) {
                 Logger.d("Connected to service on-demand for setConfig", LogSource.BRIDGE)
@@ -396,7 +391,7 @@ class BridgeClient(private val context: Context) {
         }
 
         try {
-            bridgeService?.setConfig(config.toString(4))
+            bridgeService?.setConfig(config)
         } catch (e: Exception) {
             Logger.e("Error setting config: ${e.message}", LogSource.BRIDGE)
         }

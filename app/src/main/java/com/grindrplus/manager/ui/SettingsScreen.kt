@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
 import com.grindrplus.core.Config
+import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.settings.ApiKeyTestDialog
 import com.grindrplus.manager.settings.ButtonSetting
 import com.grindrplus.manager.settings.KeyboardType
@@ -97,6 +98,14 @@ fun SettingsScreen(
     val apiKeyTestRawResponse by viewModel.apiKeyTestRawResponse.collectAsState()
     val apiKeyTestLoading by viewModel.apiKeyTestLoading.collectAsState()
 
+    var selectedPackage by remember {
+        mutableStateOf(GPApp.config.currentPackageName)
+    }
+
+    var packages by remember(GPApp.config.getConfig()) {
+        mutableStateOf(GPApp.config.getAvailablePackages(context))
+    }
+
     if (debugLogsScreen) {
         DebugLogsScreen(
             onBack = { debugLogsScreen = false },
@@ -120,7 +129,7 @@ fun SettingsScreen(
             onDismiss = { showResetDialog = false },
             onConfirm = {
                 scope.launch {
-                    Config.writeRemoteConfig(JSONObject())
+                    GPApp.config.import("{}")
                     val packageManager = context.packageManager
                     val intent = packageManager.getLaunchIntentForPackage(context.packageName)
                     intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -175,11 +184,11 @@ fun SettingsScreen(
                                 onClick = {
                                     expanded = false
                                     scope.launch {
-                                        val result = Config.readRemoteConfig()
+                                        val result = GPApp.config.export()
 
                                         FileOperationHandler.exportFile(
                                             "grindrplus_settings.json",
-                                            result.toString(4)
+                                            result
                                         )
 
                                         snackbarHostState.showSnackbar("Settings exported successfully")
@@ -195,7 +204,7 @@ fun SettingsScreen(
                                         FileOperationHandler.importFile(
                                             arrayOf("application/json")
                                         ) {
-                                            Config.writeRemoteConfig(JSONObject(it))
+                                            GPApp.config.import(it)
                                             viewModel.loadSettings()
 
                                             scope.launch {
@@ -258,8 +267,12 @@ fun SettingsScreen(
             ) {
                 item {
                     PackageSelector(
+                        packages = packages,
+                        selectedPackage = selectedPackage,
                         onPackageSelected = { packageName ->
                             viewModel.loadSettings()
+                            selectedPackage = packageName
+                            GPApp.config.currentPackageName = packageName
                         }
                     )
                 }

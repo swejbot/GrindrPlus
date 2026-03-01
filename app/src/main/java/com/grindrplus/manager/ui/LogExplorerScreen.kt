@@ -55,6 +55,7 @@ import androidx.compose.ui.window.Dialog
 import com.grindrplus.BuildConfig
 import com.grindrplus.core.Config
 import com.grindrplus.core.Logger
+import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.utils.FileOperationHandler
 import com.grindrplus.manager.utils.uploadAndShare
 import kotlinx.coroutines.Dispatchers
@@ -85,7 +86,7 @@ fun DebugLogsScreen(
     var showReportDialog by remember { mutableStateOf(false) }
 
     var debugModeEnabled by remember {
-        mutableStateOf(Config.get("debug_mode", false) as Boolean)
+        mutableStateOf(GPApp.config.get("debug_mode", false) as Boolean)
     }
 
     val isDebugBuild = BuildConfig.DEBUG
@@ -218,7 +219,7 @@ fun DebugLogsScreen(
                             if (!isDebugBuild) {
                                 val newState = !debugModeEnabled
                                 debugModeEnabled = newState
-                                Config.put("debug_mode", newState)
+                                GPApp.config.put("debug_mode", newState)
                                 scope.launch {
                                     snackbarHostState.showSnackbar(
                                         if (newState) "Verbose logging enabled" else "Verbose logging disabled"
@@ -282,7 +283,7 @@ fun DebugLogsScreen(
                 Button(
                     onClick = {
                         logs = emptyList()
-                        Logger.clearLogs()
+                        GPApp.logRepository.clearLogs()
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(

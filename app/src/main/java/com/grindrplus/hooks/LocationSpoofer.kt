@@ -78,7 +78,7 @@ class LocationSpoofer : Hook(
             if (gpsLatitude != null)
                 gpsLocationLatitude = gpsLatitude;
 
-            (Config.get("forced_coordinates", Config.get("current_location", "")) as String).takeIf {
+            (GrindrPlus.config.get("forced_coordinates", GrindrPlus.config.get("current_location", "")) as String).takeIf {
                 it.isNotEmpty()
             }?.split(",")?.firstOrNull()
                 ?.toDoubleOrNull()?.let {
@@ -91,7 +91,7 @@ class LocationSpoofer : Hook(
             if (gpsLongitude != null)
                 gpsLocationLongitude = gpsLongitude;
 
-            (Config.get("forced_coordinates", Config.get("current_location", "")) as String).takeIf {
+            (GrindrPlus.config.get("forced_coordinates", GrindrPlus.config.get("current_location", "")) as String).takeIf {
                 it.isNotEmpty()
             }?.split(",")?.lastOrNull()
                 ?.toDoubleOrNull()?.let {
@@ -104,7 +104,7 @@ class LocationSpoofer : Hook(
             val exampleButton = chatBottomToolbarLinearLayout.children.first()
 
             var locationButtonExists = false
-            if (Config.get("do_gui_safety_checks", true) as Boolean) {
+            if (GrindrPlus.config.get("do_gui_safety_checks", true) as Boolean) {
                 locationButtonExists = chatBottomToolbarLinearLayout.children.any { view ->
                     if (view is ImageButton) {
                         view.tag == "custom_location_button" ||
@@ -205,7 +205,7 @@ class LocationSpoofer : Hook(
             suspend fun refreshLocations(newSelectedLocatioName: String = "") {
                 locations = getLocations()
                 val selectedLocationName = newSelectedLocatioName.ifEmpty {
-                    Config.get("current_location_name", "") as String
+                    GrindrPlus.config.get("current_location_name", "") as String
                 }
 
                 withContext(Dispatchers.Main) {
@@ -296,7 +296,7 @@ class LocationSpoofer : Hook(
                     }
 
                     val coordinates = location.let { "${it.latitude}, ${it.longitude}" }
-                    Config.put("current_location", coordinates)
+                    GrindrPlus.config.put("current_location", coordinates)
                     GrindrPlus.showToast(Toast.LENGTH_LONG, "Teleported to $coordinates")
                 }
             }
@@ -366,15 +366,15 @@ class LocationSpoofer : Hook(
                 val location = getSelectedLocation()
 
                 if (location == null) {
-                    Config.put("current_location", "")
-                    Config.put("current_location_name", "")
+                    GrindrPlus.config.put("current_location", "")
+                    GrindrPlus.config.put("current_location_name", "")
                     GrindrPlus.showToast(Toast.LENGTH_SHORT, "Teleporting stopped")
                     return
                 }
 
                 val coordinates = location.let { "${it.latitude}, ${it.longitude}" }
-                Config.put("current_location", coordinates)
-                Config.put("current_location_name", location.name)
+                GrindrPlus.config.put("current_location", coordinates)
+                GrindrPlus.config.put("current_location_name", location.name)
                 GrindrPlus.showToast(Toast.LENGTH_LONG, "Teleported to ${location.name}")
             }
 

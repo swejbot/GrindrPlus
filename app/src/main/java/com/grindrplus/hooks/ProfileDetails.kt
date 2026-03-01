@@ -186,7 +186,7 @@ class ProfileDetails : Hook(
         }
 
         findClass(profileViewState).hook("getWeight", HookStage.AFTER) { param ->
-            if (Config.get("show_bmi_in_profile", true) as Boolean) {
+            if (GrindrPlus.config.get("show_bmi_in_profile", true) as Boolean) {
                 val weight = param.getResult()
                 val height = callMethod(param.thisObject(), "getHeight")
 
@@ -197,7 +197,7 @@ class ProfileDetails : Hook(
                             w2n("kg" in weight.toString(), weight.toString()),
                             h2n("kg" in weight.toString(), height.toString())
                         )
-                    if (Config.get("do_gui_safety_checks", true) as Boolean) {
+                    if (GrindrPlus.config.get("do_gui_safety_checks", true) as Boolean) {
                         if (weight.toString().contains("(")) {
                             logw("BMI details are already present?")
                             return@hook

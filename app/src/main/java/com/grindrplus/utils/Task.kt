@@ -15,13 +15,6 @@ abstract class Task(
     private var job: Job? = null
 
     /**
-     * Check if the task is enabled in config
-     */
-    fun isTaskEnabled(): Boolean {
-        return Config.isTaskEnabled(id)
-    }
-
-    /**
      * Override this method to implement task-specific logic
      */
     abstract suspend fun execute()
@@ -30,11 +23,6 @@ abstract class Task(
      * Start the task if it's enabled in config
      */
     fun start() {
-        if (!isTaskEnabled()) {
-            Logger.i("Task $id is disabled", LogSource.MODULE)
-            return
-        }
-
         job = GrindrPlus.taskManager.startPeriodicTask(
             taskId = id,
             initialDelayMillis = initialDelayMillis,
@@ -70,10 +58,5 @@ abstract class Task(
      * Called when task is first registered
      */
     open fun register() {
-        Config.initTaskSettings(
-            id,
-            description,
-            false // disabled by default
-        )
     }
 }

@@ -262,7 +262,7 @@ object Utils {
                     message = "Favorites and Blocks import files detected. GrindrPlus will process the favorites list first. " +
                             "Blocks import will be done on the next app restart.",
                     onConfirm = {
-                        val threshold = (Config.get("favorites_import_threshold", "500") as String).toInt()
+                        val threshold = (GrindrPlus.config.get("favorites_import_threshold", "500") as String).toInt()
                         val favorites = favoritesFile.readLines()
 
                         if (favorites.size > 50 && threshold < 1000) {
@@ -286,7 +286,7 @@ object Utils {
                     }
                 )
             } else if (favoritesFile.exists()) {
-                val threshold = (Config.get("favorites_import_threshold", "500") as String).toInt()
+                val threshold = (GrindrPlus.config.get("favorites_import_threshold", "500") as String).toInt()
                 val favorites = favoritesFile.readLines()
 
                 if (favorites.size > 50 && threshold < 1000) {
@@ -306,7 +306,7 @@ object Utils {
                     startFavoritesImport(activity, favorites, favoritesFile, threshold)
                 }
             } else if (blocksFile.exists()) {
-                val threshold = (Config.get("block_import_threshold", "500") as String).toInt()
+                val threshold = (GrindrPlus.config.get("block_import_threshold", "500") as String).toInt()
                 val blocks = blocksFile.readLines()
 
                 if (blocks.size > 100 && threshold < 1000) {

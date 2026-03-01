@@ -11,7 +11,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
-class TaskManager(private val scheduler: TaskScheduler? = null) {
+class TaskManager(
+    private val config: Config,
+    private val scheduler: TaskScheduler? = null
+) {
     private val tasks = mutableMapOf<KClass<out Task>, Task>()
 
     fun registerTasks(startTasks: Boolean = true) {
@@ -21,6 +24,12 @@ class TaskManager(private val scheduler: TaskScheduler? = null) {
             )
 
             taskList.forEach { task ->
+                config.initTaskSettings(
+                    task.id,
+                    task.description,
+                    false // disabled by default
+                )
+
                 task.register()
             }
 
@@ -40,6 +49,10 @@ class TaskManager(private val scheduler: TaskScheduler? = null) {
         }
     }
 
+    private fun AlwaysOnline.isTaskEnabled(): Boolean {
+        return config.isTaskEnabled(id)
+    }
+
     fun reloadTasks() {
         runBlocking(Dispatchers.IO) {
             tasks.values.forEach { task -> task.stop() }
@@ -57,7 +70,7 @@ class TaskManager(private val scheduler: TaskScheduler? = null) {
     fun toggleTask(taskId: String, enabled: Boolean) {
         val task = tasks.values.find { it.id == taskId } ?: return
 
-        Config.setTaskEnabled(taskId, enabled)
+        config.setTaskEnabled(taskId, enabled)
 
         if (enabled) {
             task.start()

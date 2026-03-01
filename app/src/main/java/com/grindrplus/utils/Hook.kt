@@ -17,10 +17,6 @@ abstract class Hook(
      */
     open fun cleanup() {}
 
-    protected fun isHookEnabled(): Boolean {
-        return Config.isHookEnabled(hookName)
-    }
-
     protected fun findClass(name: String): Class<*> {
         return GrindrPlus.loadClass(name)
     }
