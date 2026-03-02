@@ -102,7 +102,7 @@ fun SettingsScreen(
     var packages by remember(GPApp.config.getConfig()) {
         val existingClones = AppCloneUtils.getExistingClones(context)
         GPApp.config.registerClones(existingClones)
-        mutableStateOf(GPApp.config.getClonePackageNames(context))
+        mutableStateOf(GPApp.config.settings.getClonePackageNames())
     }
 
     if (debugLogsScreen) {

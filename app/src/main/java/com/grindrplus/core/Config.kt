@@ -1,6 +1,5 @@
 package com.grindrplus.core
 
-import android.content.Context
 import com.grindrplus.core.model.CloneSettings
 import com.grindrplus.core.model.GlobalSettings
 import org.json.JSONObject
@@ -10,7 +9,6 @@ import kotlinx.serialization.json.Json
 
 class Config(
     val getConfig: () -> String,
-    var currentPackageName: String = Constants.GRINDR_PACKAGE_NAME,
     val onChange: (value: String) -> Unit = {}
 ) {
     companion object {
@@ -27,14 +25,19 @@ class Config(
 
 
     fun update(updater: (settings: GlobalSettings) -> GlobalSettings) {
-        settings = updater(settings)
-        configUpdated()
+        val newSettings = updater(settings)
+
+        if (newSettings != settings) {
+            settings = newSettings
+            configUpdated()
+        }
     }
 
-    fun updateClone(packageName: String, updater: (cloneSettings: CloneSettings) -> CloneSettings) {
-        val newClones = updater(getCloneSettings(packageName))
-        settings = settings.withClone(packageName, newClones)
-        configUpdated()
+    fun updateClone(packageName: String, cloneUpdater: (cloneSettings: CloneSettings) -> CloneSettings) {
+        update {
+            val newClones = cloneUpdater(it.getClone(packageName))
+            it.withClone(packageName, newClones)
+        }
     }
 
     private fun configUpdated() {
@@ -76,28 +79,9 @@ class Config(
         return localConfig
     }
 
-    private fun ensurePackageExists(packageName: String) {
-        Logger.d("Ensuring package $packageName exists in config", LogSource.MANAGER)
-
-        if (!settings.clones.containsKey(packageName)) {
-            settings = settings.withClone(packageName, CloneSettings())
-            configUpdated()
-        }
-    }
-
-    fun getClonePackageNames(context: Context): List<String> {
-        Logger.d("Getting available packages", LogSource.MANAGER)
-        return settings.clones.keys.toList()
-    }
-
-    fun getCloneSettings(packageName: String): CloneSettings {
-        return settings.clones[packageName] ?: CloneSettings()
-    }
-
     fun import(content: String) {
         try {
             val configUpgraded = migrateToMultiCloneFormat(JSONObject(content))
-            ensurePackageExists(currentPackageName)
 
             settings = json.decodeFromString<GlobalSettings>(configUpgraded.toString())
 

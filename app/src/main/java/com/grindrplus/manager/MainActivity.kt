@@ -64,7 +64,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.grindrplus.core.Constants
 import com.grindrplus.core.Constants.GRINDR_PACKAGE_NAME
 import com.grindrplus.core.Logger
 import com.grindrplus.manager.MainNavItem.Home
@@ -76,8 +75,6 @@ import com.grindrplus.manager.ui.NotificationScreen
 import com.grindrplus.manager.ui.SettingsScreen
 import com.grindrplus.manager.ui.theme.GrindrPlusTheme
 import com.grindrplus.manager.utils.FileOperationHandler
-import com.grindrplus.utils.HookManager
-import com.grindrplus.utils.TaskManager
 import com.onebusaway.plausible.android.AndroidResourcePlausibleConfig
 import com.onebusaway.plausible.android.NetworkFirstPlausibleClient
 import com.onebusaway.plausible.android.Plausible
@@ -214,12 +211,6 @@ class MainActivity : ComponentActivity() {
             var calculatorScreen = remember { mutableStateOf(false) }
             val globalSettings = remember { GPApp.config.settings }
 
-            // TODO this should not be here
-            LaunchedEffect(Unit) {
-                HookManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerHooks(false)
-                TaskManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerTasks(false)
-            }
-
             LaunchedEffect(Unit) {
                 calculatorScreen.value = globalSettings.discreet_icon
 
@@ -241,7 +232,7 @@ class MainActivity : ComponentActivity() {
                     )
 
                     fun getHooks() =
-                        GPApp.config.getCloneSettings(packageName).let {
+                        GPApp.config.settings.getClone(packageName).let {
                             val keyToEnabled = mutableMapOf<String, Any>();
                             for ((name, hook) in it.hooks) {
                                 keyToEnabled[name] = hook.enabled as Any

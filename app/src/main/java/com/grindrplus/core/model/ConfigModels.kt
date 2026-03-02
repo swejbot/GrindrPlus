@@ -19,6 +19,15 @@ data class GlobalSettings(
 
     val clones: Map<String, CloneSettings> = mapOf()
 ) {
+
+    fun getClonePackageNames(): List<String> {
+        return clones.keys.toList()
+    }
+
+    fun getClone(packageName: String): CloneSettings {
+        return clones[packageName] ?: CloneSettings()
+    }
+
     fun withClone(packageName: String, cloneSettings: CloneSettings): GlobalSettings {
         return this.copy(
             clones = clones + (packageName to cloneSettings)

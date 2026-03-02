@@ -57,7 +57,7 @@ class TaskManager(
     }
 
     private fun Task.isTaskEnabled(): Boolean {
-        return config.getCloneSettings(packageName).isTaskEnabled(id)
+        return config.settings.getClone(packageName).isTaskEnabled(id)
     }
 
     fun reloadTasks() {

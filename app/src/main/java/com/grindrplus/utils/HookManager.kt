@@ -87,7 +87,7 @@ class HookManager(
 
             hooks = hookList.associateBy { it::class }.toMutableMap()
 
-            val cloneSettings = config.getCloneSettings(packageName)
+            val cloneSettings = config.settings.getClone(packageName)
 
             hooks.values.forEach { hook ->
                 if (cloneSettings.isHookEnabled(hook.hookName)) {

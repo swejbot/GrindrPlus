@@ -148,15 +148,15 @@ object GrindrPlus {
 
         setupCrashLogging()
         checkVersionCodes(versionCodes, versionNames)
-        configureManagerServices(packageName)
+        configureManagerServices()
 
 
         val newModule = File(context.filesDir, "grindrplus.dex")
         File(modulePath).copyTo(newModule, true)
         newModule.setReadOnly()
 
-        this.cloneSettings = config.getCloneSettings(packageName)
         this.globalSettings = config.settings
+        this.cloneSettings = config.settings.getClone(packageName)
 
         this.classLoader =
             DexClassLoader(newModule.absolutePath, null, null, context.classLoader)
@@ -173,24 +173,7 @@ object GrindrPlus {
             config.updateClone(packageName) { it.copy(android_device_id = androidId) }
         }
 
-        val forcedCoordinates = bridgeClient.getForcedLocation(packageName)
-
-        if (forcedCoordinates.isNotEmpty()) {
-            val parts = forcedCoordinates.split(",").map { it.trim() }
-            if (parts.size != 2 || parts.any { it.toDoubleOrNull() == null }) {
-                Logger.w("Invalid forced coordinates format: $forcedCoordinates", LogSource.MODULE)
-            } else {
-                if (parts[0] == "0.0" && parts[1] == "0.0") {
-                    Logger.w("Ignoring forced coordinates: $forcedCoordinates", LogSource.MODULE)
-                } else {
-                    Logger.i("Using forced coordinates: $forcedCoordinates", LogSource.MODULE)
-                    config.updateClone(packageName) { it.copy(forced_coordinates = forcedCoordinates) }
-                }
-            }
-        } else if (cloneSettings.forced_coordinates != "") {
-            Logger.i("Clearing previously set forced coordinates", LogSource.MODULE)
-            config.updateClone(packageName) { it.copy(forced_coordinates = "") }
-        }
+        setForcedCoordinates(bridgeClient)
 
         registerActivityLifecycleCallbacks(application)
 
@@ -228,7 +211,7 @@ object GrindrPlus {
         }
     }
 
-    private fun configureManagerServices(packageName: String) {
+    private fun configureManagerServices() {
         this.bridgeClient = BridgeClient(context)
 
         val connected = runBlocking {
@@ -244,10 +227,9 @@ object GrindrPlus {
 
         if (!connected) {
             Logger.e("Failed to connect to the bridge service", LogSource.MODULE)
-            shouldShowBridgeConnectionError = true
+            this.shouldShowBridgeConnectionError = true
 
-            config = Config(
-                currentPackageName = packageName,
+            this.config = Config(
                 getConfig = { "{}" }, // empty json object
                 onChange = { },
             )
@@ -260,15 +242,14 @@ object GrindrPlus {
                 }
             }
 
-            config = Config(
-                currentPackageName = packageName,
+            this.config = Config(
                 getConfig = { bridgeClient.getConfig() },
                 onChange = { bridgeClient.setConfig(it) },
             )
         }
 
 
-        Logger.debugEnabled = globalSettings.debug_mode || BuildConfig.DEBUG
+        Logger.debugEnabled = config.settings.debug_mode || BuildConfig.DEBUG
     }
 
     private fun setupServerNotificationHook() {
@@ -682,6 +663,27 @@ object GrindrPlus {
                 Logger.e("Error fetching own user ID: ${e.message}", LogSource.MODULE)
                 Logger.writeRaw(e.stackTraceToString())
             }
+        }
+    }
+
+    private fun setForcedCoordinates(bridgeClient: BridgeClient) {
+        val forcedCoordinates = bridgeClient.getForcedLocation(packageName)
+
+        if (forcedCoordinates.isNotEmpty()) {
+            val parts = forcedCoordinates.split(",").map { it.trim() }
+            if (parts.size != 2 || parts.any { it.toDoubleOrNull() == null }) {
+                Logger.w("Invalid forced coordinates format: $forcedCoordinates", LogSource.MODULE)
+            } else {
+                if (parts[0] == "0.0" && parts[1] == "0.0") {
+                    Logger.w("Ignoring forced coordinates: $forcedCoordinates", LogSource.MODULE)
+                } else {
+                    Logger.i("Using forced coordinates: $forcedCoordinates", LogSource.MODULE)
+                    config.updateClone(packageName) { it.copy(forced_coordinates = forcedCoordinates) }
+                }
+            }
+        } else if (cloneSettings.forced_coordinates != "") {
+            Logger.i("Clearing previously set forced coordinates", LogSource.MODULE)
+            config.updateClone(packageName) { it.copy(forced_coordinates = "") }
         }
     }
 

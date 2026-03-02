@@ -17,6 +17,8 @@ import com.grindrplus.core.model.GlobalSettings
 import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.settings.SettingsUtils.testMapsApiKey
 import com.grindrplus.manager.utils.AppIconManager
+import com.grindrplus.utils.HookManager
+import com.grindrplus.utils.TaskManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -31,7 +33,7 @@ class SettingsViewModel(
     private val _selectedPackage = MutableStateFlow<String>(Constants.GRINDR_PACKAGE_NAME)
     val selectedPackage: StateFlow<String> = _selectedPackage
 
-    private val _cloneSettings = MutableStateFlow<CloneSettings>(GPApp.config.getCloneSettings(selectedPackage.value))
+    private val _cloneSettings = MutableStateFlow<CloneSettings>(GPApp.config.settings.getClone(selectedPackage.value))
     val cloneSettings: StateFlow<CloneSettings> = _cloneSettings
 
     private val _globalSettings = MutableStateFlow<GlobalSettings>(GPApp.config.settings)
@@ -84,8 +86,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             _isLoading.value = true
 
-            _cloneSettings.value = GPApp.config.getCloneSettings(selectedPackage.value)
+            HookManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerHooks(false)
+            TaskManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerTasks(false)
+
             _globalSettings.value = GPApp.config.settings
+            _cloneSettings.value = GPApp.config.settings.getClone(selectedPackage.value)
 
             try {
                 val hooks = cloneSettings.value.hooks
@@ -473,7 +478,6 @@ class SettingsViewModel(
     }
 
     fun changeSelectedPackage(packageName: String) {
-        GPApp.config.currentPackageName = packageName
         _selectedPackage.value = packageName
         loadSettings()
     }
