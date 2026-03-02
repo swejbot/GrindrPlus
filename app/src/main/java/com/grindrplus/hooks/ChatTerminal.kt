@@ -25,7 +25,7 @@ class ChatTerminal : Hook(
             if (!messageBody.has("text")) return@hook // Ignore non-text messages
             val text = messageBody.getString("text")
 
-            val commandPrefix = (GrindrPlus.config.get("command_prefix", "/") as String)
+            val commandPrefix = GrindrPlus.cloneSettings.command_prefix
             if (text.startsWith(commandPrefix)) {
                 param.setResult(null) // Don't send the command to the chat
                 CommandHandler(sender, recipient).handle(text.substring(1))

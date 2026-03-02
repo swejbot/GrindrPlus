@@ -89,7 +89,7 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
     var customModUri by remember { mutableStateOf<Uri?>(null) }
 
     // 3. Side Effects
-    val manifestUrl = (GPApp.config.get("custom_manifest", DATA_URL) as String).ifBlank { null }
+    val manifestUrl = GPApp.config.settings.custom_manifest.ifBlank { null }
 
     LaunchedEffect(Unit) {
         viewModel.loadVersionData(manifestUrl.toString())
@@ -106,7 +106,7 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
     LaunchedEffect(selectedVersion) {
         if (selectedVersion == null) return@LaunchedEffect
 
-        val mapsApiKey = (GPApp.config.get("maps_api_key", "") as String).ifBlank { null }
+        val mapsApiKey = GPApp.config.settings.maps_api_key.ifBlank { null }
 
         installation = Installation(
             context,
@@ -138,7 +138,7 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
                 val bundleFile = createTempFileFromUri(context, customBundleUri!!, "grindr-$customVersionName.zip")
                 val modFile = createTempFileFromUri(context, customModUri!!, "mod-$customVersionName.zip")
 
-                val mapsApiKey = (GPApp.config.get("maps_api_key", "") as String).ifBlank { null }
+                val mapsApiKey = GPApp.config.settings.maps_api_key.ifBlank { null }
 
                 val customInstallation = Installation(
                     context,
@@ -485,7 +485,7 @@ private fun startInstallation(
 
     activityScope.launch {
         try {
-            val mapsApiKey = (GPApp.config.get("maps_api_key", "") as String).ifBlank { null }
+            val mapsApiKey = GPApp.config.settings.maps_api_key.ifBlank { null }
 
             val installation = Installation(
                 context,

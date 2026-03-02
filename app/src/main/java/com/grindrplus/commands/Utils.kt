@@ -83,7 +83,7 @@ class Utils(
 
     @Command("prefix", help = "Change the command prefix (default: /)")
     fun prefix(args: List<String>) {
-        val prefix = GrindrPlus.config.get("command_prefix", "/")
+        val prefix = GrindrPlus.cloneSettings.command_prefix
         when {
             args.isEmpty() -> GrindrPlus.showToast(
                 Toast.LENGTH_LONG,
@@ -94,7 +94,7 @@ class Utils(
                 "Invalid command prefix"
             )
             args[0] == "reset" || args[0] == "clear" -> {
-                GrindrPlus.config.put("command_prefix", "/")
+                GrindrPlus.cloneSettings.command_prefix = "/"
                 GrindrPlus.showToast(
                     Toast.LENGTH_LONG,
                     "Command prefix reset to /",
@@ -113,7 +113,7 @@ class Utils(
                 "Command prefix is already set to ${args[0]}"
             )
             else -> {
-                GrindrPlus.config.put("command_prefix", args[0])
+                GrindrPlus.cloneSettings.command_prefix = args[0]
                 GrindrPlus.showToast(
                     Toast.LENGTH_LONG,
                     "Command prefix set to ${args[0]}"

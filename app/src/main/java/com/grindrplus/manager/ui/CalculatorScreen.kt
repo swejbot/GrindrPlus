@@ -47,7 +47,7 @@ fun CalculatorScreen(calculatorScreen: MutableState<Boolean>) {
     )
 
     LaunchedEffect(Unit) {
-        showPasswordDialog = GPApp.config.get("calculator_first_launch", true) as Boolean
+        showPasswordDialog = GPApp.config.settings.calculator_first_launch
     }
 
     Surface(
@@ -63,7 +63,7 @@ fun CalculatorScreen(calculatorScreen: MutableState<Boolean>) {
 
         if (showPasswordDialog) {
             CalculatorPasswordDialog {
-                GPApp.config.put("calculator_first_launch", false)
+                GPApp.config.settings.calculator_first_launch = false
                 showPasswordDialog = false
             }
         }

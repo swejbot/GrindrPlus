@@ -71,7 +71,7 @@ class StatusDialog : Hook(
                     "Disconnected"
                 }
 
-                val androidDeviceIdStatus = (GrindrPlus.config.get("android_device_id", "") as String)
+                val androidDeviceIdStatus = (GrindrPlus.cloneSettings.android_device_id)
                     .let { id -> if (id.isNotEmpty()) "Spoofing ($id)" else "Not Spoofing (stock)" }
 
                 if (GrindrPlus.bridgeClient.isConnected()) {

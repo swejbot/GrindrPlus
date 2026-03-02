@@ -1,5 +1,6 @@
 package com.grindrplus.utils
 
+import com.grindrplus.core.CloneSettings
 import com.grindrplus.core.Config
 import com.grindrplus.core.LogSource
 import com.grindrplus.core.Logger
@@ -12,7 +13,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
 class TaskManager(
-    private val config: Config,
+    private val cloneSettings: CloneSettings,
     private val scheduler: TaskScheduler? = null
 ) {
     private val tasks = mutableMapOf<KClass<out Task>, Task>()
@@ -24,7 +25,7 @@ class TaskManager(
             )
 
             taskList.forEach { task ->
-                config.initTaskSettings(
+                cloneSettings.initTaskSettings(
                     task.id,
                     task.description,
                     false // disabled by default
@@ -49,8 +50,8 @@ class TaskManager(
         }
     }
 
-    private fun AlwaysOnline.isTaskEnabled(): Boolean {
-        return config.isTaskEnabled(id)
+    private fun Task.isTaskEnabled(): Boolean {
+        return cloneSettings.isTaskEnabled(id)
     }
 
     fun reloadTasks() {
@@ -70,7 +71,7 @@ class TaskManager(
     fun toggleTask(taskId: String, enabled: Boolean) {
         val task = tasks.values.find { it.id == taskId } ?: return
 
-        config.setTaskEnabled(taskId, enabled)
+        cloneSettings.setTaskEnabled(taskId, enabled)
 
         if (enabled) {
             task.start()

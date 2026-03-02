@@ -44,7 +44,7 @@ class AntiBlock : Hook(
                 GrindrPlus.shouldTriggerAntiblock = true
             }
 
-        if (GrindrPlus.config.get("force_old_anti_block_behavior", false) as Boolean) {
+        if (GrindrPlus.cloneSettings.force_old_anti_block_behavior) {
             findClass("com.grindrapp.android.chat.model.ConversationDeleteNotification")
                 .hookConstructor(HookStage.BEFORE) { param ->
                     @Suppress("UNCHECKED_CAST")
@@ -185,7 +185,7 @@ class AntiBlock : Hook(
                 { profileId.toString() } else { "$displayName ($profileId)" }
                 GrindrPlus.bridgeClient.logBlockEvent(profileId.toString(), displayName, true,
                     GrindrPlus.packageName)
-                if (GrindrPlus.config.get("anti_block_use_toasts", false) as Boolean) {
+                if (GrindrPlus.cloneSettings.anti_block_use_toasts) {
                     GrindrPlus.showToast(Toast.LENGTH_LONG, "Blocked by $displayName")
                 } else {
                     GrindrPlus.bridgeClient.sendNotificationWithMultipleActions(
@@ -208,7 +208,7 @@ class AntiBlock : Hook(
                 displayName = if (displayName != profileId.toString()) "$displayName ($profileId)" else displayName
                 GrindrPlus.bridgeClient.logBlockEvent(profileId.toString(), displayName, false,
                     GrindrPlus.packageName)
-                if (GrindrPlus.config.get("anti_block_use_toasts", false) as Boolean) {
+                if (GrindrPlus.cloneSettings.anti_block_use_toasts) {
                     GrindrPlus.showToast(Toast.LENGTH_LONG, "Unblocked by $displayName")
                 } else {
                     GrindrPlus.bridgeClient.sendNotificationWithMultipleActions(

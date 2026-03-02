@@ -47,6 +47,8 @@ import java.io.IOException
 import java.lang.ref.WeakReference
 import kotlin.system.measureTimeMillis
 import androidx.core.net.toUri
+import com.grindrplus.core.CloneSettings
+import com.grindrplus.core.GlobalSettings
 import timber.log.Timber
 
 @SuppressLint("StaticFieldLeak")
@@ -60,6 +62,10 @@ object GrindrPlus {
     lateinit var bridgeClient: BridgeClient
         internal set
     lateinit var config: Config
+        internal set
+    lateinit var cloneSettings: CloneSettings
+        internal set
+    lateinit var globalSettings: GlobalSettings
         internal set
     lateinit var instanceManager: InstanceManager
         private set
@@ -149,18 +155,21 @@ object GrindrPlus {
         File(modulePath).copyTo(newModule, true)
         newModule.setReadOnly()
 
+        this.cloneSettings = config.getCloneSettings(packageName)
+        this.globalSettings = config.settings
+
         this.classLoader =
             DexClassLoader(newModule.absolutePath, null, null, context.classLoader)
         this.database = GPDatabase.create(context)
-        this.hookManager = HookManager(config)
-        this.taskManager = TaskManager(config,taskScheduer)
+        this.hookManager = HookManager(cloneSettings)
+        this.taskManager = TaskManager(cloneSettings,taskScheduer)
         this.instanceManager = InstanceManager(classLoader)
 
         if (bridgeClient.shouldRegenAndroidId(packageName)) {
             Logger.i("Generating new Android device ID", LogSource.MODULE)
             val androidId = java.util.UUID.randomUUID()
                 .toString().replace("-", "").lowercase().take(16)
-            config.put("android_device_id", androidId)
+            cloneSettings.android_device_id = androidId
         }
 
         val forcedCoordinates = bridgeClient.getForcedLocation(packageName)
@@ -174,12 +183,12 @@ object GrindrPlus {
                     Logger.w("Ignoring forced coordinates: $forcedCoordinates", LogSource.MODULE)
                 } else {
                     Logger.i("Using forced coordinates: $forcedCoordinates", LogSource.MODULE)
-                    config.put("forced_coordinates", forcedCoordinates)
+                    cloneSettings.forced_coordinates = forcedCoordinates
                 }
             }
-        } else if (config.get("forced_coordinates", "") != "") {
+        } else if (cloneSettings.forced_coordinates != "") {
             Logger.i("Clearing previously set forced coordinates", LogSource.MODULE)
-            config.put("forced_coordinates", "")
+            cloneSettings.forced_coordinates = ""
         }
 
         registerActivityLifecycleCallbacks(application)
@@ -258,11 +267,7 @@ object GrindrPlus {
         }
 
 
-        Logger.debugEnabled = when (val value = config.get("debug_mode", false)) {
-            is Boolean -> value // We account for both strings and booleans
-            is String -> value.equals("true", ignoreCase = true)
-            else -> false
-        } || BuildConfig.DEBUG
+        Logger.debugEnabled = globalSettings.debug_mode || BuildConfig.DEBUG
     }
 
     private fun setupServerNotificationHook() {
@@ -295,7 +300,7 @@ object GrindrPlus {
                         showAgeVerificationComplianceDialog(activity)
                     }
                     activity.javaClass.name == browseExploreActivity -> {
-                        if ((config.get("maps_api_key", "") as String).isEmpty()) {
+                        if (globalSettings.maps_api_key.isEmpty()) {
                             if (!bridgeClient.isLSPosed()) {
                                 showMapsApiKeyDialog(activity)
                             }
@@ -376,10 +381,10 @@ object GrindrPlus {
 
         Logger.i("Initializing GrindrPlus core...", LogSource.MODULE)
 
-        if ((config.get("reset_database", false) as Boolean)) {
+        if (cloneSettings.reset_database) {
             Logger.i("Resetting database...", LogSource.MODULE)
             database.clearAllTables()
-            config.put("reset_database", false)
+            cloneSettings.reset_database = false
         }
 
         hookManager.init()

@@ -61,7 +61,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
-import com.grindrplus.core.Config
 import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.settings.ApiKeyTestDialog
 import com.grindrplus.manager.settings.ButtonSetting
@@ -74,9 +73,9 @@ import com.grindrplus.manager.settings.TextSetting
 import com.grindrplus.manager.settings.TextSettingWithButtons
 import com.grindrplus.manager.settings.rememberViewModel
 import com.grindrplus.manager.ui.components.PackageSelector
+import com.grindrplus.manager.utils.AppCloneUtils
 import com.grindrplus.manager.utils.FileOperationHandler
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,12 +97,12 @@ fun SettingsScreen(
     val apiKeyTestRawResponse by viewModel.apiKeyTestRawResponse.collectAsState()
     val apiKeyTestLoading by viewModel.apiKeyTestLoading.collectAsState()
 
-    var selectedPackage by remember {
-        mutableStateOf(GPApp.config.currentPackageName)
-    }
+    val selectedPackage by viewModel.selectedPackage.collectAsState()
 
     var packages by remember(GPApp.config.getConfig()) {
-        mutableStateOf(GPApp.config.getAvailablePackages(context))
+        val existingClones = AppCloneUtils.getExistingClones(context)
+        GPApp.config.registerClones(existingClones)
+        mutableStateOf(GPApp.config.getClonePackageNames(context))
     }
 
     if (debugLogsScreen) {
@@ -270,9 +269,7 @@ fun SettingsScreen(
                         packages = packages,
                         selectedPackage = selectedPackage,
                         onPackageSelected = { packageName ->
-                            viewModel.loadSettings()
-                            selectedPackage = packageName
-                            GPApp.config.currentPackageName = packageName
+                            viewModel.changeSelectedPackage(packageName)
                         }
                     )
                 }

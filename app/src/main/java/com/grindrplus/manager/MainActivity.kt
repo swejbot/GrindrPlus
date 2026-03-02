@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
@@ -66,7 +67,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.grindrplus.core.Config
+import com.grindrplus.core.Constants
 import com.grindrplus.core.Constants.GRINDR_PACKAGE_NAME
+import com.grindrplus.core.HookTaskSettings
 import com.grindrplus.core.Logger
 import com.grindrplus.manager.MainNavItem.Home
 import com.grindrplus.manager.ui.BlockLogScreen
@@ -214,18 +217,24 @@ class MainActivity : ComponentActivity() {
             var patchInfoDialog by remember { mutableStateOf(false) }
             var showUninstallDialogState by remember { showUninstallDialog }
             var calculatorScreen = remember { mutableStateOf(false) }
+            val globalSettings = remember { GPApp.config.settings }
+
+            // TODO this should not be here
+            LaunchedEffect(Unit) {
+                val cloneSettings = GPApp.config.getCloneSettings(Constants.GRINDR_PACKAGE_NAME)
+                HookManager(cloneSettings).registerHooks(false)
+                TaskManager(cloneSettings).registerTasks(false)
+            }
 
             LaunchedEffect(Unit) {
-                HookManager(GPApp.config).registerHooks(false)
-                TaskManager(GPApp.config).registerTasks(false)
-                calculatorScreen.value = GPApp.config.get("discreet_icon", false) as Boolean
+                calculatorScreen.value = globalSettings.discreet_icon
 
-                if (!(GPApp.config.get("disable_permission_checks", false) as Boolean)) {
+                if (!globalSettings.disable_permission_checks) {
                     checkNotificationPermission()
                     checkUnknownSourcesPermission()
                 }
 
-                if (GPApp.config.get("analytics", true) as Boolean) {
+                if (globalSettings.analytics) {
                     val config = AndroidResourcePlausibleConfig(this@MainActivity).also {
                         it.domain = "grindrplus.lol"
                         it.host = "https://plausible.gmmz.dev/api/"
@@ -238,14 +247,13 @@ class MainActivity : ComponentActivity() {
                     )
 
                     fun getHooks() =
-                        GPApp.config.getCurrentPackageConfig().optJSONObject("hooks")?.let {
+                        GPApp.config.getCloneSettings(packageName).let {
                             val keyToEnabled = mutableMapOf<String, Any>();
-                            for (key in it.keys()) {
-                                keyToEnabled[key] =
-                                    it.getJSONObject(key).optBoolean("enabled", false) as Any
+                            for ((name, hook) in it.hooks) {
+                                keyToEnabled[name] = hook.enabled as Any
                             }
                             keyToEnabled
-                        } ?: emptyMap<String, Any>().toMutableMap()
+                        }
 
                     plausible?.enable(true)
                     plausible?.pageView(
@@ -256,16 +264,16 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                if (GPApp.config.get("first_launch", true) as Boolean) {
+                if (globalSettings.first_launch) {
                     firstLaunchDialog = true
                     patchInfoDialog = true
                     plausible?.pageView("app://grindrplus/first_launch")
-                    GPApp.config.put("first_launch", false)
+                    globalSettings.first_launch
                 }
             }
 
             GrindrPlusTheme(
-                dynamicColor = GPApp.config.get("material_you", false) as Boolean,
+                dynamicColor = globalSettings.material_you,
             ) {
                 if (calculatorScreen.value) {
                     CalculatorScreen(calculatorScreen)

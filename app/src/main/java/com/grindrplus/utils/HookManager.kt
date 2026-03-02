@@ -1,5 +1,7 @@
 package com.grindrplus.utils
 
+import com.grindrplus.GrindrPlus
+import com.grindrplus.core.CloneSettings
 import com.grindrplus.core.Config
 import com.grindrplus.core.Logger
 import com.grindrplus.hooks.AllowScreenshots
@@ -34,7 +36,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
 class HookManager(
-    private val config: Config
+    private val cloneSettings: CloneSettings
 ) {
     private var hooks = mutableMapOf<KClass<out Hook>, Hook>()
 
@@ -71,7 +73,7 @@ class HookManager(
             )
 
             hookList.forEach { hook ->
-                config.initHookSettings(
+                cloneSettings.initHookSettings(
                     hook.hookName, hook.hookDesc, false
                 )
             }
@@ -81,7 +83,7 @@ class HookManager(
             hooks = hookList.associateBy { it::class }.toMutableMap()
 
             hooks.values.forEach { hook ->
-                if (config.isHookEnabled(hook.hookName)) {
+                if (cloneSettings.isHookEnabled(hook.hookName)) {
                     hook.init()
                     Logger.s("Initialized hook: ${hook.hookName}")
                 } else {

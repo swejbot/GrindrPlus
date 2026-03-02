@@ -108,7 +108,7 @@ class UnlimitedProfiles : Hook(
         }
 
         findClass(onProfileClicked).hook("invokeSuspend", HookStage.BEFORE) { param ->
-            if (GPApp.config.get("disable_profile_swipe", false) as Boolean) {
+            if (GrindrPlus.cloneSettings.disable_profile_swipe) {
                 getObjectField(param.thisObject(), param.thisObject().javaClass.declaredFields
                     .firstOrNull { it.type.name.contains("ServerDrivenCascadeCachedProfile") }?.name
                 )?.let { cachedProfile ->

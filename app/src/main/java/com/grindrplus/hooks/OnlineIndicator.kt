@@ -15,7 +15,7 @@ class OnlineIndicator : Hook(
     val isFeatureFlagEnabled = "q30.f" // search for 'implements IsFeatureFlagEnabled'
 
     override fun init() {
-        val savedDurationMinutes = GrindrPlus.config.get("online_indicator", 3).toString().toInt()
+        val savedDurationMinutes = GrindrPlus.cloneSettings.online_indicator
         val savedDurationMillis = savedDurationMinutes.minutes.inWholeMilliseconds
 
         findClass(utils)// shouldShowOnlineIndicator()

@@ -11,7 +11,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.grindrplus.core.Config
+import com.grindrplus.core.CloneSettings
+import com.grindrplus.core.Constants
+import com.grindrplus.core.GlobalSettings
 import com.grindrplus.manager.DATA_URL
 import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.settings.SettingsUtils.testMapsApiKey
@@ -27,6 +29,14 @@ class SettingsViewModel(
     private val hookHideList = setOf(
         "Status Dialog",
     )
+    private val _selectedPackage = MutableStateFlow<String>(Constants.GRINDR_PACKAGE_NAME)
+    val selectedPackage: StateFlow<String> = _selectedPackage
+
+    private val _cloneSettings = MutableStateFlow<CloneSettings>(GPApp.config.getCloneSettings(selectedPackage.value))
+    val cloneSettings: StateFlow<CloneSettings> = _cloneSettings
+
+    private val _globalSettings = MutableStateFlow<GlobalSettings>(GPApp.config.settings)
+    val globalSettings: StateFlow<GlobalSettings> = _globalSettings
 
     private val _settingGroups = MutableStateFlow<List<SettingGroup>>(emptyList())
     val settingGroups: StateFlow<List<SettingGroup>> = _settingGroups
@@ -48,6 +58,7 @@ class SettingsViewModel(
 
     private val _apiKeyTestLoading = MutableStateFlow(false)
     val apiKeyTestLoading: StateFlow<Boolean> = _apiKeyTestLoading
+
 
     fun dismissApiKeyTestDialog() {
         _showApiKeyTestDialog.value = false
@@ -74,35 +85,38 @@ class SettingsViewModel(
         viewModelScope.launch {
             _isLoading.value = true
 
+            _cloneSettings.value = GPApp.config.getCloneSettings(selectedPackage.value)
+            _globalSettings.value = GPApp.config.settings
+
             try {
-                val hooks = GPApp.config.getHooksSettings()
+                val hooks = cloneSettings.value.hooks
                 val hookSettings = hooks
                     .filterNot { (hookName, _) -> hookName in hookHideList }
-                    .map { (hookName, pair) ->
+                    .map { (hookName, hook) ->
                         SwitchSetting(
                             id = hookName,
                             title = hookName,
-                            description = pair.first,
-                            isChecked = pair.second,
+                            description = hook.description,
+                            isChecked = hook.enabled,
                             onCheckedChange = {
                                 viewModelScope.launch {
-                                    GPApp.config.setHookEnabled(hookName, it)
+                                    cloneSettings.value.setHookEnabled(hookName, it)
                                     loadSettings()
                                 }
                             }
                         )
                     }
 
-                val tasks = GPApp.config.getTasksSettings()
-                val taskSettings = tasks.map { (taskId, pair) ->
+                val tasks = cloneSettings.value.tasks
+                val taskSettings = tasks.map { (taskId, task) ->
                     SwitchSetting(
                         id = taskId,
                         title = taskId,
-                        description = pair.first,
-                        isChecked = pair.second,
+                        description = task.description,
+                        isChecked = task.enabled,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.setTaskEnabled(taskId, it)
+                                cloneSettings.value.setTaskEnabled(taskId, it)
                                 loadSettings()
                             }
                         }
@@ -114,10 +128,10 @@ class SettingsViewModel(
                         id = "command_prefix",
                         title = "Command Prefix",
                         description = "Change the command prefix (default: /)",
-                        value = GPApp.config.get("command_prefix", "/") as String,
+                        value = cloneSettings.value.command_prefix,
                         onValueChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("command_prefix", it)
+                                cloneSettings.value.command_prefix = it
                                 loadSettings()
                             }
                         },
@@ -134,10 +148,10 @@ class SettingsViewModel(
                         id = "date_format",
                         title = "Date Format",
                         description = "Format for displaying dates in the app (default: MM/dd/yyyy)",
-                        value = GPApp.config.get("date_format", "MM/dd/yyyy") as String,
+                        value = cloneSettings.value.date_format,
                         onValueChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("date_format", it)
+                                cloneSettings.value.date_format = it
                                 loadSettings()
                             }
                         },
@@ -155,11 +169,11 @@ class SettingsViewModel(
                         id = "online_indicator",
                         title = "Online indicator duration (mins)",
                         description = "Control when the green dot disappears after inactivity",
-                        value = (GPApp.config.get("online_indicator", 5) as Number).toString(),
+                        value = cloneSettings.value.online_indicator.toString(),
                         onValueChange = {
                             val value = it.toIntOrNull() ?: 5
                             viewModelScope.launch {
-                                GPApp.config.put("online_indicator", value)
+                                cloneSettings.value.online_indicator = value
                                 loadSettings()
                             }
                         },
@@ -173,10 +187,10 @@ class SettingsViewModel(
                         id = "show_bmi_in_profile",
                         title = "Show BMI in Profile",
                         description = "Display BMI in the profile section",
-                        isChecked = GPApp.config.get("show_bmi_in_profile", true) as Boolean,
+                        isChecked = cloneSettings.value.show_bmi_in_profile,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("show_bmi_in_profile", it)
+                                cloneSettings.value.show_bmi_in_profile = it
                                 loadSettings()
                             }
                         }
@@ -185,11 +199,11 @@ class SettingsViewModel(
                         id = "favorites_grid_columns",
                         title = "Favorites grid columns",
                         description = "Number of columns in the favorites grid (default: 3)",
-                        value = GPApp.config.get("favorites_grid_columns", 3).toString(),
+                        value = cloneSettings.value.favorites_grid_columns.toString(),
                         onValueChange = {
                             val value = it.toIntOrNull() ?: 3
                             viewModelScope.launch {
-                                GPApp.config.put("favorites_grid_columns", value)
+                                cloneSettings.value.favorites_grid_columns = value
                                 loadSettings()
                             }
                         },
@@ -203,10 +217,10 @@ class SettingsViewModel(
                         id = "android_device_id",
                         title = "Android Device ID",
                         description = "Change the Android Device ID",
-                        value = GPApp.config.get("android_device_id", "") as String,
+                        value = cloneSettings.value.android_device_id,
                         onValueChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("android_device_id", it)
+                                cloneSettings.value.android_device_id = it
                                 loadSettings()
                             }
                         },
@@ -222,7 +236,7 @@ class SettingsViewModel(
                             ButtonAction("Generate") {
                                 val uuid = java.util.UUID.randomUUID()
                                 val newDeviceId = uuid.toString().replace("-", "").substring(0, 16)
-                                GPApp.config.put("android_device_id", newDeviceId)
+                                cloneSettings.value.android_device_id = newDeviceId
                                 loadSettings()
                                 Toast.makeText(context, "New device ID generated", Toast.LENGTH_SHORT).show()
                             }
@@ -233,10 +247,10 @@ class SettingsViewModel(
                         id = "enable_cookie_tap",
                         title = "Enable Cookie Tap",
                         description = "Enable the ability to send cookie taps to other users (they'll see them)",
-                        isChecked = GPApp.config.get("enable_cookie_tap", false) as Boolean,
+                        isChecked = cloneSettings.value.enable_cookie_tap,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("enable_cookie_tap", it)
+                                cloneSettings.value.enable_cookie_tap = it
                                 loadSettings()
                             }
                         }
@@ -245,10 +259,10 @@ class SettingsViewModel(
                         id = "enable_vip_flag",
                         title = "Enable Star Section",
                         description = "Enables what looks like a recommendation section next to Browse",
-                        isChecked = GPApp.config.get("enable_vip_flag", false) as Boolean,
+                        isChecked = cloneSettings.value.enable_vip_flag,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("enable_vip_flag", it)
+                                cloneSettings.value.enable_vip_flag = it
                                 loadSettings()
                             }
                         }
@@ -257,10 +271,10 @@ class SettingsViewModel(
                         id = "enable_interest_section",
                         title = "Enable Interest Section",
                         description = "Show interests section on profiles",
-                        isChecked = GPApp.config.get("enable_interest_section", true) as Boolean,
+                        isChecked = cloneSettings.value.enable_interest_section,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("enable_interest_section", it)
+                                cloneSettings.value.enable_interest_section = it
                                 loadSettings()
                             }
                         }
@@ -269,10 +283,10 @@ class SettingsViewModel(
                         id = "disable_profile_swipe",
                         title = "Disable profile swipe",
                         description = "Disable profile swipe and open profile on click",
-                        isChecked = GPApp.config.get("disable_profile_swipe", false) as Boolean,
+                        isChecked = cloneSettings.value.disable_profile_swipe,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("disable_profile_swipe", it)
+                                cloneSettings.value.disable_profile_swipe = it
                                 loadSettings()
                             }
                         }
@@ -281,10 +295,10 @@ class SettingsViewModel(
                         id = "force_old_anti_block_behavior",
                         title = "Force old AntiBlock behavior",
                         description = "Use the old AntiBlock behavior (don't use this, required for testing)",
-                        isChecked = GPApp.config.get("force_old_anti_block_behavior", false) as Boolean,
+                        isChecked = cloneSettings.value.force_old_anti_block_behavior,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("force_old_anti_block_behavior", it)
+                                cloneSettings.value.force_old_anti_block_behavior = it
                                 loadSettings()
                             }
                         }
@@ -293,10 +307,10 @@ class SettingsViewModel(
                         id = "anti_block_use_toasts",
                         title = "Use toasts for AntiBlock hook",
                         description = "Instead of receiving Android notifications, use toasts for block/unblock notifications",
-                        isChecked = GPApp.config.get("anti_block_use_toasts", false) as Boolean,
+                        isChecked = cloneSettings.value.anti_block_use_toasts,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("anti_block_use_toasts", it)
+                                cloneSettings.value.anti_block_use_toasts = it
                                 loadSettings()
                             }
                         }
@@ -305,10 +319,10 @@ class SettingsViewModel(
                         id = "reset_database",
                         title = "Reset local database on next start",
                         description = "Will delete all local data on next app start",
-                        isChecked = GPApp.config.get("reset_database", false) as Boolean,
+                        isChecked = cloneSettings.value.reset_database,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("reset_database", it)
+                                cloneSettings.value.reset_database = it
                                 loadSettings()
                             }
                         }
@@ -317,10 +331,10 @@ class SettingsViewModel(
                         id = "do_gui_safety_checks",
                         title = "Do GUI safety checks",
                         description = "Prevent graphic glitches when applying GUI based hooks",
-                        isChecked = GPApp.config.get("do_gui_safety_checks", true) as Boolean,
+                        isChecked = cloneSettings.value.do_gui_safety_checks,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("do_gui_safety_checks", it)
+                                cloneSettings.value.do_gui_safety_checks = it
                                 loadSettings()
                             }
                         }
@@ -332,17 +346,17 @@ class SettingsViewModel(
                         id = "maps_api_key",
                         title = "Maps API Key",
                         description = "Use a custom Maps API Key when using Grindr Plus with LSPatch",
-                        value = GPApp.config.get("maps_api_key", "") as String,
+                        value = globalSettings.value.maps_api_key,
                         onValueChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("maps_api_key", it)
+                                globalSettings.value.maps_api_key = it
                                 loadSettings()
                             }
                         },
                         validator = { null },
                         buttons = listOf(
                             ButtonAction("Test") {
-                                val apiKey = GPApp.config.get("maps_api_key", "") as String
+                                val apiKey = globalSettings.value.maps_api_key
                                 if (apiKey.isBlank()) {
                                     Toast.makeText(context, "Please enter an API key first", Toast.LENGTH_SHORT).show()
                                 } else {
@@ -360,10 +374,10 @@ class SettingsViewModel(
                         id = "custom_manifest",
                         title = "Custom Manifest URL",
                         description = "Use a custom manifest URL when using Grindr Plus with LSPatch",
-                        value = GPApp.config.get("custom_manifest", DATA_URL) as String,
+                        value = globalSettings.value.custom_manifest,
                         onValueChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("custom_manifest", it)
+                                globalSettings.value.custom_manifest = it
                                 loadSettings()
                             }
                         },
@@ -373,10 +387,10 @@ class SettingsViewModel(
                         id = "analytics",
                         title = "Opt-in analytics",
                         description = "Help improve the app by sending anonymous usage data",
-                        isChecked = GPApp.config.get("analytics", true) as Boolean,
+                        isChecked = globalSettings.value.analytics,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("analytics", it)
+                                globalSettings.value.analytics = it
                                 loadSettings()
                             }
                         }
@@ -385,10 +399,10 @@ class SettingsViewModel(
                         id = "discreet_icon",
                         title = "Camouflage app",
                         description = "Hide the app icon and use a different name",
-                        isChecked = GPApp.config.get("discreet_icon", false) as Boolean,
+                        isChecked = globalSettings.value.discreet_icon,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("discreet_icon", it)
+                                globalSettings.value.discreet_icon = it
                                 loadSettings()
 
                                 val appIconManager = AppIconManager(context)
@@ -406,10 +420,10 @@ class SettingsViewModel(
                         id = "disable_permission_checks",
                         title = "Disable permission checks",
                         description = "Disable permission checks on startup (not recommended)",
-                        isChecked = GPApp.config.get("disable_permission_checks", false) as Boolean,
+                        isChecked = globalSettings.value.disable_permission_checks,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("disable_permission_checks", it)
+                                globalSettings.value.disable_permission_checks = it
                                 loadSettings()
                             }
                         }
@@ -421,10 +435,10 @@ class SettingsViewModel(
                         id = "material_you",
                         title = "Enable dynamic colors",
                         description = "Use Material You colors for the app\nRestart the app to apply changes",
-                        isChecked = GPApp.config.get("material_you", false) as Boolean,
+                        isChecked = globalSettings.value.material_you,
                         onCheckedChange = {
                             viewModelScope.launch {
-                                GPApp.config.put("material_you", it)
+                                globalSettings.value.material_you = it
                                 loadSettings()
                             }
                         }
@@ -457,6 +471,12 @@ class SettingsViewModel(
                 _isLoading.value = false
             }
         }
+    }
+
+    fun changeSelectedPackage(packageName: String) {
+        GPApp.config.currentPackageName = packageName
+        _selectedPackage.value = packageName
+        loadSettings()
     }
 }
 

@@ -86,7 +86,7 @@ fun DebugLogsScreen(
     var showReportDialog by remember { mutableStateOf(false) }
 
     var debugModeEnabled by remember {
-        mutableStateOf(GPApp.config.get("debug_mode", false) as Boolean)
+        mutableStateOf(GPApp.config.settings.debug_mode)
     }
 
     val isDebugBuild = BuildConfig.DEBUG
@@ -219,7 +219,7 @@ fun DebugLogsScreen(
                             if (!isDebugBuild) {
                                 val newState = !debugModeEnabled
                                 debugModeEnabled = newState
-                                GPApp.config.put("debug_mode", newState)
+                                GPApp.config.settings.debug_mode = newState
                                 scope.launch {
                                     snackbarHostState.showSnackbar(
                                         if (newState) "Verbose logging enabled" else "Verbose logging disabled"

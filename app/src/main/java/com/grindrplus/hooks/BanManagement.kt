@@ -64,7 +64,7 @@ class BanManagement : Hook(
 
 		// search for 'Settings.Secure.getString(context.getContentResolver(), "android_id");' in deviceUtility class
         findClass(deviceUtility).hook("h", HookStage.AFTER) { param ->
-            val androidId = GrindrPlus.config.get("android_device_id", "") as String
+            val androidId = GrindrPlus.cloneSettings.android_device_id
             if (androidId.isNotEmpty()) {
                 param.setResult(androidId)
             }
@@ -217,7 +217,7 @@ class BanManagement : Hook(
             dialog.setNeutralButton("Generate New Device ID") { _, _ ->
                 val uuid = java.util.UUID.randomUUID()
                 val newDeviceId = uuid.toString().replace("-", "")
-                GrindrPlus.config.put("android_device_id", newDeviceId)
+                GrindrPlus.cloneSettings.android_device_id = newDeviceId
                 restartGrindr(1500, "New device ID generated. Grindr will restart now.")
             }
         } else {
