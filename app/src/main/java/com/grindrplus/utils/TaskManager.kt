@@ -1,6 +1,5 @@
 package com.grindrplus.utils
 
-import com.grindrplus.core.CloneSettings
 import com.grindrplus.core.Config
 import com.grindrplus.core.LogSource
 import com.grindrplus.core.Logger
@@ -13,7 +12,8 @@ import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
 class TaskManager(
-    private val cloneSettings: CloneSettings,
+    private val config: Config,
+    private val packageName: String,
     private val scheduler: TaskScheduler? = null
 ) {
     private val tasks = mutableMapOf<KClass<out Task>, Task>()
@@ -25,11 +25,17 @@ class TaskManager(
             )
 
             taskList.forEach { task ->
-                cloneSettings.initTaskSettings(
-                    task.id,
-                    task.description,
-                    false // disabled by default
-                )
+                config.updateClone(packageName) {
+                    var result = it
+
+                    taskList.forEach { task ->
+                        result = result.withTaskInit(
+                            task.id, task.description, false
+                        )
+                    }
+
+                    result
+                }
 
                 task.register()
             }
@@ -51,7 +57,7 @@ class TaskManager(
     }
 
     private fun Task.isTaskEnabled(): Boolean {
-        return cloneSettings.isTaskEnabled(id)
+        return config.getCloneSettings(packageName).isTaskEnabled(id)
     }
 
     fun reloadTasks() {
@@ -71,7 +77,7 @@ class TaskManager(
     fun toggleTask(taskId: String, enabled: Boolean) {
         val task = tasks.values.find { it.id == taskId } ?: return
 
-        cloneSettings.setTaskEnabled(taskId, enabled)
+        config.updateClone(packageName) { it.withTaskEnabled(taskId, enabled) }
 
         if (enabled) {
             task.start()

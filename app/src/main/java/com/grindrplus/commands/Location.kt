@@ -4,8 +4,6 @@ import android.app.AlertDialog
 import android.net.Uri
 import android.widget.Toast
 import com.grindrplus.GrindrPlus
-import com.grindrplus.GrindrPlus.packageName
-import com.grindrplus.core.Config
 import com.grindrplus.core.Logger
 import com.grindrplus.core.Utils.coordsToGeoHash
 import com.grindrplus.persistence.model.TeleportLocationEntity
@@ -37,8 +35,8 @@ class Location(recipient: String, sender: String) : CommandModule("Location", re
                     )
                     .setPositiveButton("OK", null)
                     .setNegativeButton("Disable") { _, _ ->
-                        GrindrPlus.cloneSettings.forced_coordinates = ""
-                        GrindrPlus.bridgeClient.deleteForcedLocation(packageName)
+                        GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(forced_coordinates = "") }
+                        GrindrPlus.bridgeClient.deleteForcedLocation(GrindrPlus.packageName)
                         GrindrPlus.showToast(
                             Toast.LENGTH_LONG,
                             "Forced coordinates disabled"
@@ -55,9 +53,8 @@ class Location(recipient: String, sender: String) : CommandModule("Location", re
          * provided any arguments, just toggle teleport.
          */
         if (args.isEmpty()) {
-            val status = GrindrPlus.cloneSettings.current_location.isEmpty()
-            if (!status) {
-                GrindrPlus.cloneSettings.current_location = ""
+            GrindrPlus.cloneSettings.current_location?.let {
+                GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(current_location = null) }
                 return GrindrPlus.showToast(Toast.LENGTH_LONG, "Teleportation disabled")
             }
 
@@ -74,7 +71,7 @@ class Location(recipient: String, sender: String) : CommandModule("Location", re
          */
         when {
             args.size == 1 && args[0] == "off" -> {
-                GrindrPlus.cloneSettings.current_location = ""
+                GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(current_location = null) }
                 return GrindrPlus.showToast(Toast.LENGTH_LONG, "Teleportation disabled")
             }
             args.size == 1 && args[0].contains(",") -> {
@@ -125,8 +122,7 @@ class Location(recipient: String, sender: String) : CommandModule("Location", re
             val location =
                 when {
                     args.size == 1 -> {
-                        val currentAppliedLocation = GrindrPlus.cloneSettings.current_location
-                        currentAppliedLocation.ifEmpty { getGpsLocation() }
+                        GrindrPlus.cloneSettings.current_location ?: getGpsLocation()
                     }
                     args.size == 2 && args[1].contains(",") -> args[1]
                     args.size == 3 &&
@@ -275,7 +271,7 @@ class Location(recipient: String, sender: String) : CommandModule("Location", re
     }
 
     private fun teleportToCoordinates(lat: Double, lon: Double, silent: Boolean = false) {
-        GrindrPlus.cloneSettings.current_location = "$lat,$lon"
+        GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(current_location = "$lat,$lon") }
         val geohash = coordsToGeoHash(lat, lon)
 
         GrindrPlus.executeAsync {

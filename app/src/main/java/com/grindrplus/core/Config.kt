@@ -1,93 +1,12 @@
 package com.grindrplus.core
 
 import android.content.Context
+import com.grindrplus.core.model.CloneSettings
+import com.grindrplus.core.model.GlobalSettings
 import org.json.JSONObject
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-@Serializable
-data class GlobalSettings(
-    var first_launch: Boolean = true,
-    var analytics: Boolean = true,
-    var discreet_icon: Boolean = false,
-    var material_you: Boolean = false,
-    var debug_mode: Boolean = false,
-    var disable_permission_checks: Boolean = false,
-    var custom_manifest: String = "",
-    var maps_api_key: String = "",
-    var last_push_id: String = "",
-
-    var favorites_import_threshold: Int = 500,
-    var calculator_first_launch: Boolean = true,
-
-    var clones: MutableMap<String, CloneSettings> = mutableMapOf()
-)
-
-@Serializable
-data class HookTaskSettings(
-    var description: String = "",
-    var enabled: Boolean = false
-)
-
-@Serializable
-data class CloneSettings(
-    var hooks: MutableMap<String, HookTaskSettings> = mutableMapOf(),
-    var tasks: MutableMap<String, HookTaskSettings> = mutableMapOf(),
-
-    var show_bmi_in_profile: Boolean = true,
-    
-    var enable_cookie_tap: Boolean = false,
-    var enable_vip_flag: Boolean = false,
-    var enable_interest_section: Boolean = true,
-    var disable_profile_swipe: Boolean = false,
-    
-    var force_old_anti_block_behavior: Boolean = false,
-    var anti_block_use_toasts: Boolean = false,
-
-    var current_location: String = "",
-    var current_location_name: String = "",
-
-
-    var command_prefix: String = "/",
-    var date_format: String = "MM/dd/yyyy",
-    var online_indicator: Int = 3,
-    var favorites_grid_columns: Int = 3,
-    var forced_coordinates: String = "",
-
-    var reset_database: Boolean = false,
-    var do_gui_safety_checks: Boolean = true,
-    var android_device_id: String = "",
-) {
-    fun initHookSettings(name: String, description: String, state: Boolean) {
-        if (!hooks.containsKey(name)) {
-            hooks[name] = HookTaskSettings(description, state)
-        }
-    }
-
-    fun initTaskSettings(taskId: String, description: String, state: Boolean) {
-        if (!tasks.containsKey(taskId)) {
-            tasks[taskId] = HookTaskSettings(description, state)
-        }
-    }
-
-    fun isHookEnabled(name: String): Boolean {
-        return hooks[name]?.enabled ?: false
-    }
-
-    fun setHookEnabled(name: String, enabled: Boolean) {
-        hooks[name]?.enabled = enabled
-    }
-
-    fun isTaskEnabled(id: String): Boolean {
-        return tasks[id]?.enabled ?: false
-    }
-
-    fun setTaskEnabled(id: String, enabled: Boolean) {
-        tasks[id]?.enabled = enabled
-    }
-
-}
 
 class Config(
     val getConfig: () -> String,
@@ -95,7 +14,7 @@ class Config(
     val onChange: (value: String) -> Unit = {}
 ) {
     companion object {
-        val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
+        val json = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = true }
     }
 //    private var localConfig = JSONObject()
     var settings: GlobalSettings = GlobalSettings()
@@ -104,6 +23,18 @@ class Config(
 
     init {
         import(getConfig())
+    }
+
+
+    fun update(updater: (settings: GlobalSettings) -> GlobalSettings) {
+        settings = updater(settings)
+        configUpdated()
+    }
+
+    fun updateClone(packageName: String, updater: (cloneSettings: CloneSettings) -> CloneSettings) {
+        val newClones = updater(getCloneSettings(packageName))
+        settings = settings.withClone(packageName, newClones)
+        configUpdated()
     }
 
     private fun configUpdated() {
@@ -148,8 +79,8 @@ class Config(
     private fun ensurePackageExists(packageName: String) {
         Logger.d("Ensuring package $packageName exists in config", LogSource.MANAGER)
 
-        if (!settings.clones.containsKey(packageName)){
-            settings.clones[packageName] = CloneSettings()
+        if (!settings.clones.containsKey(packageName)) {
+            settings = settings.withClone(packageName, CloneSettings())
             configUpdated()
         }
     }
@@ -184,7 +115,7 @@ class Config(
     fun registerClones(existingClones: List<String>) {
         for (packageName in existingClones) {
             if (!settings.clones.containsKey(packageName)) {
-                settings.clones[packageName] = CloneSettings()
+                settings = settings.withClone(packageName, CloneSettings())
             }
         }
     }

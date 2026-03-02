@@ -6,7 +6,6 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatTextView
 import com.grindrplus.GrindrPlus
-import com.grindrplus.core.Config
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -94,7 +93,7 @@ class Utils(
                 "Invalid command prefix"
             )
             args[0] == "reset" || args[0] == "clear" -> {
-                GrindrPlus.cloneSettings.command_prefix = "/"
+                GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(command_prefix = "/") }
                 GrindrPlus.showToast(
                     Toast.LENGTH_LONG,
                     "Command prefix reset to /",
@@ -113,7 +112,7 @@ class Utils(
                 "Command prefix is already set to ${args[0]}"
             )
             else -> {
-                GrindrPlus.cloneSettings.command_prefix = args[0]
+                GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(command_prefix = args[0]) }
                 GrindrPlus.showToast(
                     Toast.LENGTH_LONG,
                     "Command prefix set to ${args[0]}"

@@ -55,7 +55,7 @@ suspend fun fetchNotifs(context: Context) = withContext(Dispatchers.IO) {
 
         val msg = tgMessages.value.lastOrNull() ?: return@use
         if (GPApp.config.settings.last_push_id != msg.id) {
-            GPApp.config.settings.last_push_id = msg.id
+            GPApp.config.update { it.copy(last_push_id = msg.id) }
             if (msg.content.contains("#push"))
                 sendNotification(context, msg.content.replace("#push", "").trim())
             else sendNotification(context)

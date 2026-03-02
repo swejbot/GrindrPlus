@@ -80,7 +80,6 @@ class LocationSpoofer : Hook(
 
             GrindrPlus.cloneSettings.forced_coordinates
                 .ifEmpty { GrindrPlus.cloneSettings.current_location }
-                .takeIf { it.isNotEmpty() }
                 ?.split(",")
                 ?.firstOrNull()
                 ?.toDoubleOrNull()?.let {
@@ -95,7 +94,6 @@ class LocationSpoofer : Hook(
 
             GrindrPlus.cloneSettings.forced_coordinates
                 .ifEmpty { GrindrPlus.cloneSettings.current_location }
-                .takeIf { it.isNotEmpty() }
                 ?.split(",")
                 ?.lastOrNull()
                 ?.toDoubleOrNull()?.let {
@@ -300,7 +298,7 @@ class LocationSpoofer : Hook(
                     }
 
                     val coordinates = location.let { "${it.latitude}, ${it.longitude}" }
-                    GrindrPlus.cloneSettings.current_location = coordinates
+                    GrindrPlus.config.updateClone(GrindrPlus.packageName) { it.copy(current_location = coordinates, current_location_name = location.name) }
                     GrindrPlus.showToast(Toast.LENGTH_LONG, "Teleported to $coordinates")
                 }
             }
@@ -370,15 +368,23 @@ class LocationSpoofer : Hook(
                 val location = getSelectedLocation()
 
                 if (location == null) {
-                    GrindrPlus.cloneSettings.current_location = ""
-                    GrindrPlus.cloneSettings.current_location_name = ""
+                    GrindrPlus.config.updateClone(GrindrPlus.packageName) {
+                        it.copy(
+                            current_location = null,
+                            current_location_name = null
+                        )
+                    }
                     GrindrPlus.showToast(Toast.LENGTH_SHORT, "Teleporting stopped")
                     return
                 }
 
                 val coordinates = location.let { "${it.latitude}, ${it.longitude}" }
-                GrindrPlus.cloneSettings.current_location = coordinates
-                GrindrPlus.cloneSettings.current_location_name = location.name
+                GrindrPlus.config.updateClone(GrindrPlus.packageName) {
+                    it.copy(
+                        current_location = coordinates,
+                        current_location_name = location.name
+                    )
+                }
                 GrindrPlus.showToast(Toast.LENGTH_LONG, "Teleported to ${location.name}")
             }
 

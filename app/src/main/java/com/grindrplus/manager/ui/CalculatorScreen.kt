@@ -63,7 +63,7 @@ fun CalculatorScreen(calculatorScreen: MutableState<Boolean>) {
 
         if (showPasswordDialog) {
             CalculatorPasswordDialog {
-                GPApp.config.settings.calculator_first_launch = false
+                GPApp.config.update { it.copy(calculator_first_launch = false) }
                 showPasswordDialog = false
             }
         }

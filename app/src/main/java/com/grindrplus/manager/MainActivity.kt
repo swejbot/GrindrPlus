@@ -47,8 +47,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateMap
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -66,10 +64,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.grindrplus.core.Config
 import com.grindrplus.core.Constants
 import com.grindrplus.core.Constants.GRINDR_PACKAGE_NAME
-import com.grindrplus.core.HookTaskSettings
 import com.grindrplus.core.Logger
 import com.grindrplus.manager.MainNavItem.Home
 import com.grindrplus.manager.ui.BlockLogScreen
@@ -91,7 +87,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
 import timber.log.Timber.DebugTree
-import kotlin.system.exitProcess
 
 
 internal val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -221,9 +216,8 @@ class MainActivity : ComponentActivity() {
 
             // TODO this should not be here
             LaunchedEffect(Unit) {
-                val cloneSettings = GPApp.config.getCloneSettings(Constants.GRINDR_PACKAGE_NAME)
-                HookManager(cloneSettings).registerHooks(false)
-                TaskManager(cloneSettings).registerTasks(false)
+                HookManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerHooks(false)
+                TaskManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerTasks(false)
             }
 
             LaunchedEffect(Unit) {

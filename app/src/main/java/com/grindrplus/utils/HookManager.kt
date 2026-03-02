@@ -1,7 +1,5 @@
 package com.grindrplus.utils
 
-import com.grindrplus.GrindrPlus
-import com.grindrplus.core.CloneSettings
 import com.grindrplus.core.Config
 import com.grindrplus.core.Logger
 import com.grindrplus.hooks.AllowScreenshots
@@ -30,13 +28,13 @@ import com.grindrplus.hooks.TimberLogging
 import com.grindrplus.hooks.UnlimitedAlbums
 import com.grindrplus.hooks.UnlimitedProfiles
 import com.grindrplus.hooks.UnlockExplorer
-import com.grindrplus.hooks.WebSocketAlive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
 class HookManager(
-    private val cloneSettings: CloneSettings
+    private val config: Config,
+    private val packageName: String
 ) {
     private var hooks = mutableMapOf<KClass<out Hook>, Hook>()
 
@@ -72,15 +70,24 @@ class HookManager(
 //                WebSocketAlive()
             )
 
-            hookList.forEach { hook ->
-                cloneSettings.initHookSettings(
-                    hook.hookName, hook.hookDesc, false
-                )
+            config.updateClone(packageName) {
+                var result = it
+
+                hookList.forEach { hook ->
+                    result = result.withHookInit(
+                        hook.hookName, hook.hookDesc, false
+                    )
+                }
+
+                result
             }
+
 
             if (!init) return@runBlocking
 
             hooks = hookList.associateBy { it::class }.toMutableMap()
+
+            val cloneSettings = config.getCloneSettings(packageName)
 
             hooks.values.forEach { hook ->
                 if (cloneSettings.isHookEnabled(hook.hookName)) {

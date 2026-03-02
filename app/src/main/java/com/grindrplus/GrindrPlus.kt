@@ -47,8 +47,8 @@ import java.io.IOException
 import java.lang.ref.WeakReference
 import kotlin.system.measureTimeMillis
 import androidx.core.net.toUri
-import com.grindrplus.core.CloneSettings
-import com.grindrplus.core.GlobalSettings
+import com.grindrplus.core.model.CloneSettings
+import com.grindrplus.core.model.GlobalSettings
 import timber.log.Timber
 
 @SuppressLint("StaticFieldLeak")
@@ -161,15 +161,16 @@ object GrindrPlus {
         this.classLoader =
             DexClassLoader(newModule.absolutePath, null, null, context.classLoader)
         this.database = GPDatabase.create(context)
-        this.hookManager = HookManager(cloneSettings)
-        this.taskManager = TaskManager(cloneSettings,taskScheduer)
+        this.hookManager = HookManager(config, packageName)
+        this.taskManager = TaskManager(config, packageName,taskScheduer)
         this.instanceManager = InstanceManager(classLoader)
 
         if (bridgeClient.shouldRegenAndroidId(packageName)) {
             Logger.i("Generating new Android device ID", LogSource.MODULE)
             val androidId = java.util.UUID.randomUUID()
                 .toString().replace("-", "").lowercase().take(16)
-            cloneSettings.android_device_id = androidId
+
+            config.updateClone(packageName) { it.copy(android_device_id = androidId) }
         }
 
         val forcedCoordinates = bridgeClient.getForcedLocation(packageName)
@@ -183,12 +184,12 @@ object GrindrPlus {
                     Logger.w("Ignoring forced coordinates: $forcedCoordinates", LogSource.MODULE)
                 } else {
                     Logger.i("Using forced coordinates: $forcedCoordinates", LogSource.MODULE)
-                    cloneSettings.forced_coordinates = forcedCoordinates
+                    config.updateClone(packageName) { it.copy(forced_coordinates = forcedCoordinates) }
                 }
             }
         } else if (cloneSettings.forced_coordinates != "") {
             Logger.i("Clearing previously set forced coordinates", LogSource.MODULE)
-            cloneSettings.forced_coordinates = ""
+            config.updateClone(packageName) { it.copy(forced_coordinates = "") }
         }
 
         registerActivityLifecycleCallbacks(application)
@@ -384,7 +385,7 @@ object GrindrPlus {
         if (cloneSettings.reset_database) {
             Logger.i("Resetting database...", LogSource.MODULE)
             database.clearAllTables()
-            cloneSettings.reset_database = false
+            config.updateClone(packageName) { it.copy(reset_database = false) }
         }
 
         hookManager.init()
