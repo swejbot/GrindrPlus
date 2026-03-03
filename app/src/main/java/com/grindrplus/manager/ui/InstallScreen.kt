@@ -89,10 +89,10 @@ fun InstallPage(context: Activity, innerPadding: PaddingValues, viewModel: Insta
     var customModUri by remember { mutableStateOf<Uri?>(null) }
 
     // 3. Side Effects
-    val manifestUrl = GPApp.config.settings.custom_manifest.ifBlank { null }
+    val manifestUrl = GPApp.config.settings.custom_manifest.ifBlank { DATA_URL }
 
     LaunchedEffect(Unit) {
-        viewModel.loadVersionData(manifestUrl.toString())
+        viewModel.loadVersionData(manifestUrl)
     }
 
     // Creates a background task to auto-select the latest version

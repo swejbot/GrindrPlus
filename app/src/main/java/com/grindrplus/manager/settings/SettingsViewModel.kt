@@ -86,8 +86,8 @@ class SettingsViewModel(
         viewModelScope.launch {
             _isLoading.value = true
 
-            HookManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerHooks(false)
-            TaskManager(GPApp.config, Constants.GRINDR_PACKAGE_NAME).registerTasks(false)
+            HookManager(GPApp.config, selectedPackage.value).registerHooks(false)
+            TaskManager(GPApp.config, selectedPackage.value).registerTasks(false)
 
             _globalSettings.value = GPApp.config.settings
             _cloneSettings.value = GPApp.config.settings.getClone(selectedPackage.value)
