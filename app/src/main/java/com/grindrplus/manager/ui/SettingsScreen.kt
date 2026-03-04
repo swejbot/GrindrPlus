@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
+import com.grindrplus.core.Config
 import com.grindrplus.manager.GPApp
 import com.grindrplus.manager.settings.ApiKeyTestDialog
 import com.grindrplus.manager.settings.ButtonSetting
@@ -183,7 +184,7 @@ fun SettingsScreen(
                                 onClick = {
                                     expanded = false
                                     scope.launch {
-                                        val result = GPApp.config.export()
+                                        val result = Config.serialize(GPApp.config.settings)
 
                                         FileOperationHandler.exportFile(
                                             "grindrplus_settings.json",

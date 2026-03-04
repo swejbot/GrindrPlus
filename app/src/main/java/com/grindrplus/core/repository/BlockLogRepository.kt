@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 class BlockLogRepository(
-    val context: Context
+    context: Context
 ) {
     private val blockEventsFile by lazy { File(context.getExternalFilesDir(null), "block_events.json") }
     private val blockEventsLock = ReentrantLock()

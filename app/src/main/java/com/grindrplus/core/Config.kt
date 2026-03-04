@@ -9,11 +9,23 @@ import kotlinx.serialization.json.Json
 
 class Config(
     val getConfig: () -> String,
-    val onChange: (value: String) -> Unit = {}
+    val onChange: (value: GlobalSettings) -> Unit = {}
 ) {
     companion object {
-        val json = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = true }
+        private val json = Json {
+            ignoreUnknownKeys = true
+            prettyPrint = true
+            encodeDefaults = true
+        }
+
+        fun deserialize(value: String): GlobalSettings =
+            json.decodeFromString(value)
+
+        fun serialize(settings: GlobalSettings): String =
+            json.encodeToString(settings)
+
     }
+
 //    private var localConfig = JSONObject()
     var settings: GlobalSettings = GlobalSettings()
         private set
@@ -41,7 +53,7 @@ class Config(
     }
 
     private fun configUpdated() {
-        onChange(export())
+        onChange(settings)
     }
 
     private fun migrateToMultiCloneFormat(localConfig: JSONObject): JSONObject {
@@ -83,17 +95,13 @@ class Config(
         try {
             val configUpgraded = migrateToMultiCloneFormat(JSONObject(content))
 
-            settings = json.decodeFromString<GlobalSettings>(configUpgraded.toString())
+            settings = deserialize(configUpgraded.toString())
 
             configUpdated()
         } catch (e: Exception) {
             Logger.e("Failed to import valid configuration: ${e.message}", LogSource.MANAGER)
             throw e
         }
-    }
-
-    fun export(): String {
-        return json.encodeToString(settings)
     }
 
     fun registerClones(existingClones: List<String>) {

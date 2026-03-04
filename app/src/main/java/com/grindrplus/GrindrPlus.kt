@@ -60,13 +60,13 @@ object GrindrPlus {
     lateinit var database: GPDatabase
         private set
     lateinit var bridgeClient: BridgeClient
-        internal set
+        private set
     lateinit var config: Config
-        internal set
+        private set
     lateinit var cloneSettings: CloneSettings
-        internal set
+        private set
     lateinit var globalSettings: GlobalSettings
-        internal set
+        private set
     lateinit var instanceManager: InstanceManager
         private set
     lateinit var httpClient: Client
@@ -162,7 +162,7 @@ object GrindrPlus {
             DexClassLoader(newModule.absolutePath, null, null, context.classLoader)
         this.database = GPDatabase.create(context)
         this.hookManager = HookManager(config, packageName)
-        this.taskManager = TaskManager(config, packageName,taskScheduer)
+        this.taskManager = TaskManager(config, packageName, taskScheduer)
         this.instanceManager = InstanceManager(classLoader)
 
         if (bridgeClient.shouldRegenAndroidId(packageName)) {
@@ -231,7 +231,10 @@ object GrindrPlus {
 
             this.config = Config(
                 getConfig = { "{}" }, // empty json object
-                onChange = { },
+                onChange = {
+                    globalSettings = it
+                    cloneSettings = it.getClone(packageName)
+                },
             )
         } else {
             Logger.onMessage { message ->
@@ -244,7 +247,12 @@ object GrindrPlus {
 
             this.config = Config(
                 getConfig = { bridgeClient.getConfig() },
-                onChange = { bridgeClient.setConfig(it) },
+                onChange = {
+                    val configJson = Config.serialize(it)
+                    bridgeClient.setConfig(configJson)
+                    globalSettings = it
+                    cloneSettings = it.getClone(packageName)
+                },
             )
         }
 
@@ -281,6 +289,7 @@ object GrindrPlus {
                     activity.javaClass.name == ageVerificationActivity -> {
                         showAgeVerificationComplianceDialog(activity)
                     }
+
                     activity.javaClass.name == browseExploreActivity -> {
                         if (globalSettings.maps_api_key.isEmpty()) {
                             if (!bridgeClient.isLSPosed()) {
@@ -288,10 +297,12 @@ object GrindrPlus {
                             }
                         }
                     }
+
                     shouldShowBridgeConnectionError -> {
                         showBridgeConnectionError(activity)
                         shouldShowBridgeConnectionError = false
                     }
+
                     shouldShowVersionMismatchDialog -> {
                         showVersionMismatchDialog(activity)
                         shouldShowVersionMismatchDialog = false

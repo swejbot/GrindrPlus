@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 class LogRepository(
-    val context: Context
+    context: Context
 ) {
     private val logFile by lazy { File(context.getExternalFilesDir(null), "grindrplus.log") }
     private val ioExecutor = Executors.newSingleThreadExecutor()

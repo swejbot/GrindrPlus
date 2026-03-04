@@ -6,7 +6,7 @@ import com.grindrplus.core.Logger
 import java.io.File
 
 class ConfigRepository(
-    val context: Context
+    context: Context
 ) {
     private val configFile by lazy { File(context.getExternalFilesDir(null), "grindrplus.json") }
 

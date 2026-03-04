@@ -32,7 +32,7 @@ class NotificationSender(
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
 
-            with(NotificationManagerCompat.from(context)) {
+            with(NotificationManagerCompat.from(context))  {
                 notify(notificationId, notificationBuilder.build())
             }
         } catch (e: Exception) {

@@ -36,7 +36,7 @@ class GPApp : Application() {
 
         config = Config(
             getConfig = { configRepository.getConfig() },
-            onChange = { configRepository.setConfig(it) }
+            onChange = { configRepository.setConfig(Config.serialize(it)) }
         )
 
         Logger.initialize(false) { message ->
