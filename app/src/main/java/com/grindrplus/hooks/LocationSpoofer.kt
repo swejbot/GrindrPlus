@@ -73,16 +73,21 @@ class LocationSpoofer : Hook(
             }
         }
 
+        fun getLocation() =
+            GrindrPlus.cloneSettings.forced_coordinates
+                .ifEmpty { GrindrPlus.cloneSettings.current_location }
+                .takeIf { !it.isNullOrEmpty() }
+                ?.split(",")
+                ?.map { it.toDouble() }
+
         locationClass.hook("getLatitude", HookStage.AFTER) { param ->
             val gpsLatitude = param.getResult() as Double?
             if (gpsLatitude != null)
-                gpsLocationLatitude = gpsLatitude;
+                gpsLocationLatitude = gpsLatitude
 
-            GrindrPlus.cloneSettings.forced_coordinates
-                .ifEmpty { GrindrPlus.cloneSettings.current_location }
-                ?.split(",")
+            getLocation()
                 ?.firstOrNull()
-                ?.toDoubleOrNull()?.let {
+                ?.let {
                     param.setResult(it)
                 }
         }
@@ -90,13 +95,11 @@ class LocationSpoofer : Hook(
         locationClass.hook("getLongitude", HookStage.AFTER) { param ->
             val gpsLongitude = param.getResult() as Double?
             if (gpsLongitude != null)
-                gpsLocationLongitude = gpsLongitude;
+                gpsLocationLongitude = gpsLongitude
 
-            GrindrPlus.cloneSettings.forced_coordinates
-                .ifEmpty { GrindrPlus.cloneSettings.current_location }
-                ?.split(",")
+            getLocation()
                 ?.lastOrNull()
-                ?.toDoubleOrNull()?.let {
+                ?.let {
                     param.setResult(it)
                 }
         }
